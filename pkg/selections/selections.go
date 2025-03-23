@@ -64,6 +64,7 @@ func (s *Set) Add(selection Selection) {
 			return
 		}
 	}
+	log.Printf("Setting last selection")
 	s.Last = &selection
 
 	isImportant := false
@@ -103,11 +104,16 @@ func (s *Set) Add(selection Selection) {
 	}
 
 	if len(s.Ephemeral) > s.Options.MaxEphemeralElements {
+		log.Printf("Truncating ephemeral list to %d elements", s.Options.MaxEphemeralElements)
 		s.Ephemeral = s.Ephemeral[len(s.Ephemeral)-s.Options.MaxEphemeralElements:]
 	}
 	if len(s.Important) > s.Options.MaxImportantElements {
+		log.Printf("Truncating important list to %d elements", s.Options.MaxImportantElements)
 		s.Important = s.Important[len(s.Important)-s.Options.MaxImportantElements:]
 	}
+
+	log.Printf("Ephemeral length: %d", len(s.Ephemeral))
+	log.Printf("Important length: %d", len(s.Important))
 }
 
 func (s *Set) List(out io.Writer) {

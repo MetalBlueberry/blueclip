@@ -6,8 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -15,9 +13,7 @@ type Client struct {
 	*http.Client
 }
 
-func NewClient() *Client {
-	socket := filepath.Join(os.TempDir(), "blueclip", "blueclip.sock")
-
+func NewClient(socket string) *Client {
 	SocketTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
