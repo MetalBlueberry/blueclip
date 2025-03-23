@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -48,10 +49,24 @@ func (c *Client) List(ctx context.Context) (*http.Response, error) {
 	return resp, nil
 }
 
-func (c *Client) Print(ctx context.Context, in io.Reader) (*http.Response, error) {
+type PrintOption func(*http.Request)
+
+func PrintWithUnindent(unindent bool) PrintOption {
+	return func(req *http.Request) {
+		q := req.URL.Query()
+		q.Set("unindent", strconv.FormatBool(unindent))
+		req.URL.RawQuery = q.Encode()
+	}
+}
+
+func (c *Client) Print(ctx context.Context, in io.Reader, opts ...PrintOption) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/print", in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	for _, opt := range opts {
+		opt(req)
 	}
 
 	resp, err := c.Do(req)
@@ -75,10 +90,24 @@ func (c *Client) Copy(ctx context.Context, in io.Reader) (*http.Response, error)
 	return resp, nil
 }
 
-func (c *Client) Clear(ctx context.Context, in io.Reader) (*http.Response, error) {
+type ClearOption func(*http.Request)
+
+func ClearWithType(t string) ClearOption {
+	return func(req *http.Request) {
+		q := req.URL.Query()
+		q.Set("type", t)
+		req.URL.RawQuery = q.Encode()
+	}
+}
+
+func (c *Client) Clear(ctx context.Context, in io.Reader, opts ...ClearOption) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/clear", in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	for _, opt := range opts {
+		opt(req)
 	}
 
 	resp, err := c.Do(req)

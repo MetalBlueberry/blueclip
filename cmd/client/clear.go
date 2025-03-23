@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -18,7 +19,21 @@ var clearCmd = &cobra.Command{
 		ctx := context.Background()
 
 		client := service.NewClient(socketPath)
-		resp, err := client.Clear(ctx, cmd.InOrStdin())
+
+		clearType, err := cmd.Flags().GetString("type")
+		if err != nil {
+			log.Fatalf("Failed to get type flag: %v", err)
+		}
+
+		clearAll, err := cmd.Flags().GetBool("all")
+		if err != nil {
+			log.Fatalf("Failed to get all flag: %v", err)
+		}
+		if clearAll {
+			cmd.SetIn(strings.NewReader(""))
+		}
+
+		resp, err := client.Clear(ctx, cmd.InOrStdin(), service.ClearWithType(clearType))
 		if err != nil {
 			log.Fatalf("Failed to clear clipboard: %v", err)
 		}
@@ -37,4 +52,5 @@ var clearCmd = &cobra.Command{
 
 func init() {
 	clearCmd.Flags().String("type", "all", "type of items to clear, [all, ephemeral, important]")
+	clearCmd.Flags().Bool("all", false, "clear all items, if not specified, it will read from stdin")
 }

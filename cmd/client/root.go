@@ -22,6 +22,7 @@ func Register(base *cobra.Command) {
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(printCmd)
 	rootCmd.AddCommand(copyCmd)
+	rootCmd.AddCommand(clearCmd)
 }
 
 func init() {

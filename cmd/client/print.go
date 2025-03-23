@@ -24,7 +24,13 @@ blueclip list | fzf --preview-window right:wrap --preview 'echo {} | blueclip pr
 		ctx := context.Background()
 
 		client := service.NewClient(socketPath)
-		resp, err := client.Print(ctx, cmd.InOrStdin())
+
+		unindent, err := cmd.Flags().GetBool("unindent")
+		if err != nil {
+			log.Fatalf("Failed to get unindent flag: %v", err)
+		}
+
+		resp, err := client.Print(ctx, cmd.InOrStdin(), service.PrintWithUnindent(unindent))
 		if err != nil {
 			log.Fatalf("Failed to print selection: %v", err)
 		}
@@ -39,4 +45,8 @@ blueclip list | fzf --preview-window right:wrap --preview 'echo {} | blueclip pr
 			log.Fatalf("Failed to print selection: %v", resp.Status)
 		}
 	},
+}
+
+func init() {
+	printCmd.Flags().BoolP("unindent", "u", false, "Unindent the selection")
 }

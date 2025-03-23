@@ -3,6 +3,7 @@ package service
 import (
 	"blueclip/pkg/selections"
 	"blueclip/pkg/xclip"
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -135,6 +136,9 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
+	unindentFlag := req.URL.Query().Get("unindent")
+	log.Printf("Handle print with unindent flag: %s", unindentFlag)
+
 	line, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Failed to read line: %v", err)
@@ -147,8 +151,42 @@ func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err = resp.Write(selection.Content)
+	if unindentFlag == "true" {
+		unindent(bytes.NewReader(selection.Content), resp)
+	} else {
+		_, err = resp.Write(selection.Content)
+	}
+
 	if err != nil {
 		log.Printf("Failed to write selection: %v", err)
+	}
+}
+
+// Very simple unindenter that uses the first line to determine the number of leading spaces
+// and removes them from all lines.
+func unindent(in io.Reader, out io.Writer) {
+	scanner := bufio.NewScanner(in)
+	scanner.Split(bufio.ScanLines)
+	detectedIndentation := -1
+
+	isIndentation := func(r rune) bool {
+		return r != ' ' && r != '\t'
+	}
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if detectedIndentation == -1 {
+			detectedIndentation = bytes.IndexFunc(line, isIndentation)
+			if detectedIndentation == -1 {
+				detectedIndentation = 0
+			}
+		}
+		lineIndentation := bytes.IndexFunc(line, isIndentation)
+		if lineIndentation == -1 {
+			lineIndentation = 0
+		}
+		removeMinIndentation := min(detectedIndentation, lineIndentation)
+		out.Write(line[removeMinIndentation:])
+		out.Write([]byte("\n"))
 	}
 }
