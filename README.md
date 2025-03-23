@@ -40,7 +40,7 @@ Important selections are anything that you ever copied, The biggest advantage is
 
 When you list, you always get Last selection, but then you get a mix of Important/Ephemeral interlocked. Something like
 
-```
+```txt
 Last Selection
 Important
 Ephemeral
@@ -55,7 +55,3 @@ Ephemeral
 Reasoning is that you may want to see what is in your current selection, that is why last selection is first thing. Then you are equally likely to be looking for an old important selection or a new recent selection. So both are interlocked.
 
 In any case, you can always filter with fzf. but I hope this will make it quicker for the cases where I just scroll over it. (At least for myself)
-
-
-
-

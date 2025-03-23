@@ -1,13 +1,13 @@
 package service
 
 import (
-	"blueclip/pkg/asciipng"
 	"blueclip/pkg/selections"
 	"blueclip/pkg/xclip"
 	"bufio"
 	"bytes"
 	"context"
 	"fmt"
+	"image/png"
 	"io"
 	"log"
 	"net"
@@ -15,6 +15,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/qeesung/image2ascii/convert"
 )
 
 type Server struct {
@@ -157,19 +159,31 @@ func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
 
 	if unindentFlag == "true" {
 		if selection.Target == xclip.ValidTargetImagePng {
-			ascii, err := asciipng.Run(bytes.NewReader(selection.Content))
+			convertOptions := convert.DefaultOptions
+			convertOptions.FixedWidth = 100
+			convertOptions.FixedHeight = 40
+
+			converter := convert.NewImageConverter()
+			imagefile, err := png.Decode(bytes.NewReader(selection.Content))
 			if err != nil {
-				log.Printf("Failed to convert image to ascii: %v", err)
+				resp.Write([]byte(fmt.Sprintf("failed to decode image: %v", err)))
 				return
 			}
+			ascii := converter.Image2ASCIIString(imagefile, &convertOptions)
+
 			_, err = resp.Write([]byte(ascii))
+			if err != nil {
+				log.Printf("Failed to write ascii: %v", err)
+			}
 		} else {
 			unindent(bytes.NewReader(selection.Content), resp)
 		}
 	} else {
 		_, err = resp.Write(selection.Content)
+		if err != nil {
+			log.Printf("Failed to write selection: %v", err)
+		}
 	}
-
 	if err != nil {
 		log.Printf("Failed to write selection: %v", err)
 	}
@@ -199,7 +213,13 @@ func unindent(in io.Reader, out io.Writer) {
 			lineIndentation = 0
 		}
 		removeMinIndentation := min(detectedIndentation, lineIndentation)
-		out.Write(line[removeMinIndentation:])
-		out.Write([]byte("\n"))
+		_, err := out.Write(line[removeMinIndentation:])
+		if err != nil {
+			log.Printf("Failed to write line: %v", err)
+		}
+		_, err = out.Write([]byte("\n"))
+		if err != nil {
+			log.Printf("Failed to write line: %v", err)
+		}
 	}
 }

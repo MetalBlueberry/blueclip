@@ -60,7 +60,6 @@ const (
 func (s *Set) Clear(pattern string, typ SelectionRetentionType) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	log.Printf("Clearing selections of type: %s", typ)
 
 	if pattern == "" {
 		if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeEphemeral {
@@ -78,7 +77,7 @@ func (s *Set) Clear(pattern string, typ SelectionRetentionType) {
 			if !bytes.Equal(sel.Line(), []byte(pattern)) {
 				filtered = append(filtered, sel)
 			} else {
-				log.Printf("clearing ephemeral selection: %s", sel.Content)
+				log.Printf("clearing ephemeral selection: %d bytes", len(sel.Content))
 			}
 		}
 		s.Ephemeral = filtered
@@ -90,7 +89,7 @@ func (s *Set) Clear(pattern string, typ SelectionRetentionType) {
 			if !bytes.Equal(sel.Line(), []byte(pattern)) {
 				filtered = append(filtered, sel)
 			} else {
-				log.Printf("clearing important selection: %s", sel.Content)
+				log.Printf("clearing important selection: %d bytes", len(sel.Content))
 			}
 		}
 		s.Important = filtered
