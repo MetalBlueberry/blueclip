@@ -3,6 +3,8 @@ package selections
 import (
 	"blueclip/pkg/xclip"
 	"bytes"
+	"fmt"
+	"image/png"
 	"io"
 	"log"
 	"sync"
@@ -13,6 +15,13 @@ type Selection struct {
 }
 
 func (s *Selection) Line() []byte {
+	if s.Target == xclip.ValidTargetImagePng {
+		img, err := png.Decode(bytes.NewReader(s.Content))
+		if err != nil {
+			return []byte("Failed to decode image")
+		}
+		return []byte(fmt.Sprintf("PNG Image: %d x %d\n", img.Bounds().Max.X, img.Bounds().Max.Y))
+	}
 	singleLine := bytes.ReplaceAll(s.Content, []byte("\n"), []byte(" "))
 	return append(bytes.TrimSpace(singleLine), '\n')
 }

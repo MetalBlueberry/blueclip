@@ -21,7 +21,7 @@ func TestWatch(t *testing.T) {
 		ch := xclip.Watch(
 			context.Background(),
 			WatchOptionWithClipboardSelection(ClipboardSelectionClipboard),
-			WatchOptionWithTargets([]ValidTarget{ValidTargetUTF8_STRING}),
+			WatchOptionWithMonitorTargets([]ValidTarget{ValidTargetUTF8_STRING}),
 			WatchOptionWithFrequency(time.Millisecond), // Speed up the test
 		)
 		changes := <-ch

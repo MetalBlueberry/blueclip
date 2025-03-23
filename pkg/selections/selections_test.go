@@ -14,7 +14,7 @@ func TestSet_add_single(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("test"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -28,14 +28,14 @@ func TestSet_add_Multiple(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -51,14 +51,14 @@ func TestSet_incremental_filter_on_ephemeral(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -73,13 +73,13 @@ func TestSet_incremental_filter_on_ephemeral_is_preserved_after(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -94,7 +94,7 @@ func TestSet_incremental_filter_ignores_important(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -105,13 +105,13 @@ func TestSet_incremental_filter_ignores_important(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection C"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -129,20 +129,20 @@ func TestSet_add_duplicate(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -158,13 +158,13 @@ func TestSet_add_duplicate_in_important(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -179,7 +179,7 @@ func TestSet_add_duplicate_in_important(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -198,25 +198,25 @@ func TestSet_content_is_marked_as_important_when_copied(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection C"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection D"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -238,25 +238,25 @@ func TestSet_last_selection_is_always_first(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection C"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection D"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -267,13 +267,13 @@ func TestSet_last_selection_is_always_first(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection E"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection F"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -304,13 +304,13 @@ func TestSet_clear_ephemeral(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -336,13 +336,13 @@ func TestSet_clear_important(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -364,13 +364,13 @@ func TestSet_clear_all(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection A"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection B"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 
@@ -397,7 +397,7 @@ func TestSet_clear_all(t *testing.T) {
 	s.Add(Selection{
 		Selection: xclip.Selection{
 			Content: []byte("Selection C"),
-			Type:    xclip.ValidTargetUTF8_STRING,
+			Target:  xclip.ValidTargetUTF8_STRING,
 		},
 	})
 

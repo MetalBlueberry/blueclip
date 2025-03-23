@@ -47,6 +47,12 @@ func CopyOptionSelection(selection ClipboardSelection) CopyOption {
 		return nil
 	}
 }
+func CopyOptionWithTarget(priority ValidTarget) CopyOption {
+	return func(opts *CopyOptions) error {
+		opts.target = string(priority)
+		return nil
+	}
+}
 
 // Copy copies text to clipboard
 func (x *XClip) Copy(data io.Reader, opt ...CopyOption) error {

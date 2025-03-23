@@ -12,8 +12,14 @@ import (
 )
 
 type WatchOptions struct {
-	Silent    bool
-	targets   []ValidTarget
+	Silent bool
+	// monitorTargets is the list of targets to for changes.
+	monitorTargets []ValidTarget
+
+	// targetPriority is the priority of the target to use.
+	// In case of multiple targets, the first one in the list will be used.
+	targetPriority []ValidTarget
+
 	clip      ClipboardSelection
 	frequency time.Duration
 }
@@ -27,9 +33,9 @@ func WatchOptionWithClipboardSelection(clip ClipboardSelection) WatchOption {
 	}
 }
 
-func WatchOptionWithTargets(targets []ValidTarget) WatchOption {
+func WatchOptionWithMonitorTargets(targets []ValidTarget) WatchOption {
 	return func(o *WatchOptions) error {
-		o.targets = targets
+		o.monitorTargets = targets
 		return nil
 	}
 }
@@ -42,6 +48,22 @@ func WatchOptionWithFrequency(frequency time.Duration) WatchOption {
 		o.frequency = frequency
 		return nil
 	}
+}
+
+func WatchOptionWithTargetPriority(priority []ValidTarget) WatchOption {
+	return func(o *WatchOptions) error {
+		o.targetPriority = priority
+		return nil
+	}
+}
+
+func desiredTarget(targets []ValidTarget, priority []ValidTarget) ValidTarget {
+	for _, target := range priority {
+		if slices.Contains(targets, target) {
+			return target
+		}
+	}
+	return ValidTargetUnknown
 }
 
 func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection {
@@ -64,9 +86,9 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 			PasteOptionWithSelection(opts.clip),
 		}
 
-		validTarget := findValidTarget(opts.targets, opts)
-		if validTarget != ValidTargetUnknown {
-			err := x.Paste(previous, append(commonPasteOpts, PasteOptionWithTarget(validTarget))...)
+		monitorTarget, _ := findValidTarget(opts.monitorTargets, opts)
+		if monitorTarget != ValidTargetUnknown {
+			err := x.Paste(previous, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
 			if err != nil {
 				log.Fatalf("Failed to read clipboard: %v", err)
 			}
@@ -77,46 +99,62 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 			case <-ctx.Done():
 				return
 			case <-time.After(opts.frequency):
-				validTarget := findValidTarget(opts.targets, opts)
-				if validTarget == ValidTargetUnknown {
+				monitorTarget, allTargets := findValidTarget(opts.monitorTargets, opts)
+				if monitorTarget == ValidTargetUnknown {
 					continue
 				}
 
 				current.Reset()
-				err := x.Paste(
-					current,
-					append(commonPasteOpts, PasteOptionWithTarget(validTarget))...,
+				err := x.Paste(current, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
+				if err != nil {
+					log.Printf("Failed to read clipboard: %v", err)
+					continue
+				}
+				if bytes.Equal(previous.Bytes(), current.Bytes()) {
+					continue
+				}
+
+				log.Printf("Detected change in clipboard %s", opts.clip)
+
+				previous.Reset()
+				current.WriteTo(previous)
+
+				withTarget := desiredTarget(allTargets, opts.targetPriority)
+				if withTarget == ValidTargetUnknown {
+					log.Printf("No valid target found to read, available targets: %v, valid targets: %v", allTargets, opts.targetPriority)
+					continue
+				}
+				buf := bytes.NewBuffer([]byte{})
+				err = x.Paste(
+					buf,
+					append(commonPasteOpts, PasteOptionWithTarget(withTarget))...,
 				)
 				if err != nil {
-					log.Fatalf("Failed to read clipboard: %v", err)
+					log.Printf("Failed to read clipboard: %v", err)
+					continue
 				}
-				if !bytes.Equal(previous.Bytes(), current.Bytes()) {
-					selectionBytes := current.Bytes()
-					selectionCopy := make([]byte, len(selectionBytes))
-					copy(selectionCopy, selectionBytes)
-					ch <- NewSelection(selectionCopy, validTarget)
-					previous.Reset()
-					current.WriteTo(previous)
-				}
+
+				ch <- NewSelection(buf.Bytes(), withTarget)
+				current.WriteTo(previous)
 			}
 		}
 	}()
 	return ch
 }
 
-func findValidTarget(targets []ValidTarget, opts *WatchOptions) ValidTarget {
+func findValidTarget(targets []ValidTarget, opts *WatchOptions) (ValidTarget, []ValidTarget) {
 	currentTargets, err := Targets(
 		TargetsOptionWithSelection(opts.clip),
 	)
 	if err != nil {
-		return ValidTargetUnknown
+		return ValidTargetUnknown, nil
 	}
-	for _, target := range opts.targets {
+	for _, target := range opts.monitorTargets {
 		if slices.Contains(currentTargets, target) {
-			return target
+			return target, currentTargets
 		}
 	}
-	return ValidTargetUnknown
+	return ValidTargetUnknown, currentTargets
 }
 
 type ReadResult struct {
@@ -139,16 +177,22 @@ type TargetsOptions struct {
 type ValidTarget string
 
 const (
-	ValidTargetUnknown       ValidTarget = ""
-	ValidTargetTIMESTAMP     ValidTarget = "TIMESTAMP"
-	ValidTargetTARGETS       ValidTarget = "TARGETS"
-	ValidTargetMULTIPLE      ValidTarget = "MULTIPLE"
-	ValidTargetUTF8_STRING   ValidTarget = "UTF8_STRING"
-	ValidTargetCOMPOUND_TEXT ValidTarget = "COMPOUND_TEXT"
-	ValidTargetTEXT          ValidTarget = "TEXT"
-	ValidTargetSTRING        ValidTarget = "STRING"
-	ValidTargetTextPlainUTF8 ValidTarget = "text/plain;charset=utf-8"
-	ValidTargetTextPlain     ValidTarget = "text/plain"
+	ValidTargetUnknown                          ValidTarget = ""
+	ValidTargetTIMESTAMP                        ValidTarget = "TIMESTAMP"
+	ValidTargetTARGETS                          ValidTarget = "TARGETS"
+	ValidTargetMULTIPLE                         ValidTarget = "MULTIPLE"
+	ValidTargetUTF8_STRING                      ValidTarget = "UTF8_STRING"
+	ValidTargetCOMPOUND_TEXT                    ValidTarget = "COMPOUND_TEXT"
+	ValidTargetTEXT                             ValidTarget = "TEXT"
+	ValidTargetSTRING                           ValidTarget = "STRING"
+	ValidTargetTextPlainUTF8                    ValidTarget = "text/plain;charset=utf-8"
+	ValidTargetTextPlain                        ValidTarget = "text/plain"
+	ValidTargetSAVE_TARGETS                     ValidTarget = "SAVE_TARGETS"
+	ValidTargetxSpecialGnomeCopiedFiles         ValidTarget = "x-special/gnome-copied-files"
+	ValidTargetApplicationVndPortalFiletransfer ValidTarget = "application/vnd.portal.filetransfer"
+	ValidTargetApplicationVndPortalFiles        ValidTarget = "application/vnd.portal.files"
+	ValidTargetTextUriList                      ValidTarget = "text/uri-list"
+	ValidTargetImagePng                         ValidTarget = "image/png"
 )
 
 func TargetsOptionWithSelection(selection ClipboardSelection) TargetsOption {

@@ -2,9 +2,9 @@ package xclip
 
 type Selection struct {
 	Content []byte
-	Type    ValidTarget
+	Target  ValidTarget
 }
 
 func NewSelection(content []byte, t ValidTarget) Selection {
-	return Selection{Content: content, Type: t}
+	return Selection{Content: content, Target: t}
 }

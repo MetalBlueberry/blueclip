@@ -62,14 +62,24 @@ func (s *Service) Run(ctx context.Context) error {
 
 	clipboard := xclip.Cli.Watch(
 		ctx,
-		xclip.WatchOptionWithTargets([]xclip.ValidTarget{xclip.ValidTargetUTF8_STRING}),
+		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
+		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
+			xclip.ValidTargetxSpecialGnomeCopiedFiles,
+			xclip.ValidTargetImagePng,
+			xclip.ValidTargetUTF8_STRING,
+		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionClipboard),
 		xclip.WatchOptionWithFrequency(200*time.Millisecond),
 	)
 
 	primary := xclip.Cli.Watch(
 		ctx,
-		xclip.WatchOptionWithTargets([]xclip.ValidTarget{xclip.ValidTargetUTF8_STRING}),
+		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
+		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
+			xclip.ValidTargetxSpecialGnomeCopiedFiles,
+			xclip.ValidTargetImagePng,
+			xclip.ValidTargetUTF8_STRING,
+		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionPrimary),
 		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
 	)

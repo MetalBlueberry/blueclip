@@ -16,17 +16,6 @@ import (
 	"time"
 )
 
-const (
-	HeaderAction = "action"
-	HeaderStatus = "status"
-)
-
-const (
-	ActionList  = "list"
-	ActionCopy  = "copy"
-	ActionPrint = "print"
-)
-
 type Server struct {
 	*http.Server
 	Addr string
@@ -132,9 +121,11 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, clipboardSelection := range clipboardSelections {
+		log.Printf("Copying selection to clipboard: %s with target: %s", clipboardSelection, selection.Target)
 		err = xclip.Cli.Copy(
 			bytes.NewReader(selection.Content),
 			xclip.CopyOptionSelection(xclip.ClipboardSelection(clipboardSelection)),
+			xclip.CopyOptionWithTarget(selection.Target),
 		)
 		if err != nil {
 			log.Printf("Failed to copy selection: %v", err)
