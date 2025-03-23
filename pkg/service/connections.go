@@ -125,14 +125,26 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = xclip.Cli.Copy(
-		bytes.NewReader(selection.Content),
-		xclip.CopyOptionSelection(xclip.ClipboardSelectionClipboard),
-	)
-	if err != nil {
-		log.Printf("Failed to copy selection: %v", err)
-		return
+	clipboardSelections := req.URL.Query()["clipboard-selection"]
+
+	if len(clipboardSelections) == 0 {
+		clipboardSelections = []string{string(xclip.ClipboardSelectionClipboard)}
 	}
+
+	for _, clipboardSelection := range clipboardSelections {
+		err = xclip.Cli.Copy(
+			bytes.NewReader(selection.Content),
+			xclip.CopyOptionSelection(xclip.ClipboardSelection(clipboardSelection)),
+		)
+		if err != nil {
+			log.Printf("Failed to copy selection: %v", err)
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte(fmt.Sprintf("failed to copy selection: %v", err)))
+			return
+		}
+	}
+
+	resp.WriteHeader(http.StatusOK)
 }
 
 func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {

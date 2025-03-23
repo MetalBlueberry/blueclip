@@ -60,11 +60,18 @@ func (s *Service) Run(ctx context.Context) error {
 		log.Printf("Loaded %d ephemeral and %d important selections", len(s.selections.Ephemeral), len(s.selections.Important))
 	}
 
-	ch := xclip.Cli.Watch(
+	clipboard := xclip.Cli.Watch(
 		ctx,
 		xclip.WatchOptionWithTargets([]xclip.ValidTarget{xclip.ValidTargetUTF8_STRING}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionClipboard),
 		xclip.WatchOptionWithFrequency(200*time.Millisecond),
+	)
+
+	primary := xclip.Cli.Watch(
+		ctx,
+		xclip.WatchOptionWithTargets([]xclip.ValidTarget{xclip.ValidTargetUTF8_STRING}),
+		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionPrimary),
+		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
 	)
 
 	err = s.runListener(ctx)
@@ -79,7 +86,9 @@ func (s *Service) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case data := <-ch:
+		case data := <-clipboard:
+			s.handleClipboardChange(ctx, data)
+		case data := <-primary:
 			s.handleClipboardChange(ctx, data)
 		}
 	}

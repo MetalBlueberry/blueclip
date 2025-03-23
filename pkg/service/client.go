@@ -76,10 +76,26 @@ func (c *Client) Print(ctx context.Context, in io.Reader, opts ...PrintOption) (
 	return resp, nil
 }
 
-func (c *Client) Copy(ctx context.Context, in io.Reader) (*http.Response, error) {
+type CopyOption func(*http.Request)
+
+func CopyWithClipboardSelection(selection []string) CopyOption {
+	return func(req *http.Request) {
+		q := req.URL.Query()
+		for _, s := range selection {
+			q.Add("clipboard-selection", string(s))
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+}
+
+func (c *Client) Copy(ctx context.Context, in io.Reader, opts ...CopyOption) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/copy", in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	for _, opt := range opts {
+		opt(req)
 	}
 
 	resp, err := c.Do(req)

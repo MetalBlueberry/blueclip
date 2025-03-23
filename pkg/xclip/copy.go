@@ -32,7 +32,18 @@ type CopyOption func(*CopyOptions) error
 
 func CopyOptionSelection(selection ClipboardSelection) CopyOption {
 	return func(opts *CopyOptions) error {
-		opts.selection = selection
+		switch selection {
+		case ClipboardSelectionPrimary,
+			ClipboardSelectionSecondary,
+			ClipboardSelectionClipboard:
+			opts.selection = selection
+		default:
+			return fmt.Errorf("invalid clipboard selection: %s, valid values are: %v", selection, []ClipboardSelection{
+				ClipboardSelectionPrimary,
+				ClipboardSelectionSecondary,
+				ClipboardSelectionClipboard,
+			})
+		}
 		return nil
 	}
 }
