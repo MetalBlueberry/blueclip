@@ -4,6 +4,7 @@ import (
 	"blueclip/pkg/db"
 	"blueclip/pkg/service"
 	"context"
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -31,6 +32,7 @@ var serverCmd = &cobra.Command{
 			cancel()
 			log.Println("Shutting down...")
 			<-sigChan
+			log.Println("Force shutting down...")
 			os.Exit(1)
 		}()
 
@@ -47,6 +49,10 @@ var serverCmd = &cobra.Command{
 		service := service.NewService(db)
 		err = service.Run(ctx)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				log.Println("Context canceled, exiting")
+				return
+			}
 			log.Fatalf("Failed to run service: %v", err)
 		}
 	},
