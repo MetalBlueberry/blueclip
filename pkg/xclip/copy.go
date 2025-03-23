@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 )
 
@@ -103,7 +102,6 @@ func (x *XClip) Copy(data io.Reader, opt ...CopyOption) error {
 		errChan <- stderr.String()
 	}()
 
-	log.Printf("Running command: %v", cmd.Args)
 	if err := x.RunFn(cmd); err != nil {
 		// Get the stderr content if available
 		select {

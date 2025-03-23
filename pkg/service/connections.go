@@ -96,7 +96,7 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	selection, ok := s.selections.FindMatch(line)
+	selection, ok := s.selections.Copy(line)
 	if !ok {
 		log.Printf("No match found for line: %s", line)
 		return
@@ -113,7 +113,6 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
-	log.Printf("print selection")
 	resp.Header().Set(HeaderStatus, "success")
 	line, err := io.ReadAll(req.Body)
 	if err != nil {
