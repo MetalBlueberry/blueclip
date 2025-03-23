@@ -59,6 +59,15 @@ func PrintWithUnindent(unindent bool) PrintOption {
 	}
 }
 
+func PrintWithDimensions(width, height int) PrintOption {
+	return func(req *http.Request) {
+		q := req.URL.Query()
+		q.Set("width", strconv.Itoa(width))
+		q.Set("height", strconv.Itoa(height))
+		req.URL.RawQuery = q.Encode()
+	}
+}
+
 func (c *Client) Print(ctx context.Context, in io.Reader, opts ...PrintOption) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/print", in)
 	if err != nil {
