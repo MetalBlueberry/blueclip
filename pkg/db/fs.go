@@ -22,14 +22,8 @@ func NewFileDB(path string) (*FileDB, error) {
 		path = home + path[1:]
 	}
 
-	// Convert to absolute path
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path: %v", err)
-	}
-
 	return &FileDB{
-		Path: absPath,
+		Path: path,
 	}, nil
 }
 
