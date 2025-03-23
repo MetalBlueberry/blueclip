@@ -53,13 +53,12 @@ func (s *Service) runListener(ctx context.Context) error {
 
 func (s *Service) Run(ctx context.Context) error {
 	log.Printf("Loading selections from %s", s.db.Path)
-	selections, err := s.db.Load()
+	err := s.db.Load(s.selections)
 	if err != nil {
 		log.Fatalf("Failed to load selections at %s: %v", s.db.Path, err)
+	} else {
+		log.Printf("Loaded %d ephemeral and %d important selections", len(s.selections.Ephemeral), len(s.selections.Important))
 	}
-
-	log.Printf("Loaded %d ephemeral and %d important selections", len(selections.Ephemeral), len(selections.Important))
-	s.selections = selections
 
 	ch := xclip.Cli.Watch(
 		ctx,

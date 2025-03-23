@@ -35,6 +35,54 @@ type Set struct {
 	lock sync.Mutex
 }
 
+type SelectionRetentionType string
+
+const (
+	SelectionRetentionTypeAll       SelectionRetentionType = "all"
+	SelectionRetentionTypeEphemeral SelectionRetentionType = "ephemeral"
+	SelectionRetentionTypeImportant SelectionRetentionType = "important"
+)
+
+func (s *Set) Clear(pattern string, typ SelectionRetentionType) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	log.Printf("Clearing selections of type: %s", typ)
+
+	if pattern == "" {
+		if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeEphemeral {
+			s.Ephemeral = []Selection{}
+		}
+		if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeImportant {
+			s.Important = []Selection{}
+		}
+		return
+	}
+
+	if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeEphemeral {
+		filtered := []Selection{}
+		for _, sel := range s.Ephemeral {
+			if !bytes.Equal(sel.Line(), []byte(pattern)) {
+				filtered = append(filtered, sel)
+			} else {
+				log.Printf("clearing ephemeral selection: %s", sel.Content)
+			}
+		}
+		s.Ephemeral = filtered
+	}
+
+	if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeImportant {
+		filtered := []Selection{}
+		for _, sel := range s.Important {
+			if !bytes.Equal(sel.Line(), []byte(pattern)) {
+				filtered = append(filtered, sel)
+			} else {
+				log.Printf("clearing important selection: %s", sel.Content)
+			}
+		}
+		s.Important = filtered
+	}
+}
+
 type Options struct {
 	MaxEphemeralElements int
 	MaxImportantElements int

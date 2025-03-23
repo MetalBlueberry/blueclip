@@ -75,8 +75,8 @@ func (c *Client) Copy(ctx context.Context, in io.Reader) (*http.Response, error)
 	return resp, nil
 }
 
-func (c *Client) Clear(ctx context.Context) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/clear", nil)
+func (c *Client) Clear(ctx context.Context, in io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/clear", in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}

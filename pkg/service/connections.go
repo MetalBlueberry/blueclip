@@ -77,19 +77,41 @@ func NewServer(mux *http.ServeMux) (*Server, error) {
 }
 
 func (s *Service) HandleClear(resp http.ResponseWriter, req *http.Request) {
-	log.Printf("Clearing selections")
-	resp.Header().Set(HeaderStatus, "success")
-	s.selections = selections.NewSelections()
+	query := req.URL.Query()
+	typeString := query.Get("type")
+	if typeString == "" {
+		typeString = "all"
+	}
+
+	log.Printf("Clearing selections of type: %s", typeString)
+	pattern, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Printf("Failed to read pattern: %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("failed to read pattern"))
+		return
+	}
+
+	switch typ := selections.SelectionRetentionType(typeString); typ {
+	case selections.SelectionRetentionTypeAll,
+		selections.SelectionRetentionTypeEphemeral,
+		selections.SelectionRetentionTypeImportant:
+		s.selections.Clear(string(pattern), typ)
+	default:
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
 }
 
 func (s *Service) HandleList(resp http.ResponseWriter, req *http.Request) {
 	log.Printf("Listing selections")
-	resp.Header().Set(HeaderStatus, "success")
 	s.selections.List(resp)
 }
 
 func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
-	resp.Header().Set(HeaderStatus, "success")
 	line, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Failed to read line: %v", err)
@@ -113,7 +135,6 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
-	resp.Header().Set(HeaderStatus, "success")
 	line, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Failed to read line: %v", err)

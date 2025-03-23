@@ -27,25 +27,23 @@ func NewFileDB(path string) (*FileDB, error) {
 	}, nil
 }
 
-func (db *FileDB) Load() (*selections.Set, error) {
-	var s selections.Set
-
+func (db *FileDB) Load(s *selections.Set) error {
 	f, err := os.Open(db.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return selections.NewSelections(), nil
+			return nil
 		}
-		return nil, fmt.Errorf("failed to open file: %v", err)
+		return fmt.Errorf("failed to open file: %v", err)
 	}
 	defer f.Close()
 
 	dec := gob.NewDecoder(f)
-	err = dec.Decode(&s)
+	err = dec.Decode(s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode file: %v", err)
+		return fmt.Errorf("failed to decode file: %v", err)
 	}
 
-	return &s, nil
+	return nil
 }
 
 func (db *FileDB) Save(s *selections.Set) error {

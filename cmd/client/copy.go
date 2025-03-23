@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/http"
 
 	"github.com/spf13/cobra"
 )
@@ -31,6 +32,10 @@ blueclip list | fzf | blueclip copy`,
 		_, err = io.Copy(cmd.OutOrStdout(), resp.Body)
 		if err != nil {
 			log.Fatalf("Failed to copy selection: %v", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("Failed to copy selection: %v", resp.Status)
 		}
 	},
 }

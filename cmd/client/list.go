@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/http"
 
 	"github.com/spf13/cobra"
 )
@@ -27,6 +28,10 @@ Intended to be piped to other commands such as fzf, rofi, etc.`,
 		_, err = io.Copy(cmd.OutOrStdout(), resp.Body)
 		if err != nil {
 			log.Fatalf("Failed to print selection: %v", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("Failed to list selections: %v", resp.Status)
 		}
 	},
 }

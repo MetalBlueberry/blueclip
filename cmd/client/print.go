@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/http"
 
 	"github.com/spf13/cobra"
 )
@@ -32,6 +33,10 @@ blueclip list | fzf --preview-window right:wrap --preview 'echo {} | blueclip pr
 		_, err = io.Copy(cmd.OutOrStdout(), resp.Body)
 		if err != nil {
 			log.Fatalf("Failed to print selection: %v", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("Failed to print selection: %v", resp.Status)
 		}
 	},
 }

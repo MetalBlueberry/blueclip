@@ -298,3 +298,112 @@ func TestSet_last_selection_is_always_first(t *testing.T) {
 	assert.Equal(t, "Selection B", string(s.Important[1].Content))
 	require.Len(t, s.Ephemeral, 4)
 }
+
+func TestSet_clear_ephemeral(t *testing.T) {
+	s := NewSelections()
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection A"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection B"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+
+	sel, ok := s.Copy([]byte("Selection B\n"))
+	assert.True(t, ok)
+	assert.Equal(t, "Selection B", string(sel.Content))
+
+	s.Clear("Selection A\n", SelectionRetentionTypeEphemeral)
+
+	buf := bytes.NewBuffer(nil)
+	s.List(buf)
+	require.Equal(t, "Selection B\n", buf.String())
+
+	require.Len(t, s.Important, 1)
+	assert.Equal(t, "Selection B", string(s.Important[0].Content))
+	require.Len(t, s.Ephemeral, 0)
+	// Last selection is preserved
+	require.Equal(t, "Selection B", string(s.Last.Content))
+}
+
+func TestSet_clear_important(t *testing.T) {
+	s := NewSelections()
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection A"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection B"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+
+	sel, ok := s.Copy([]byte("Selection B\n"))
+	assert.True(t, ok)
+	assert.Equal(t, "Selection B", string(sel.Content))
+
+	s.Clear("Selection B\n", SelectionRetentionTypeImportant)
+
+	require.Len(t, s.Important, 0)
+	require.Len(t, s.Ephemeral, 1)
+	assert.Equal(t, "Selection A", string(s.Ephemeral[0].Content))
+	// Last selection is preserved
+	require.Equal(t, "Selection B", string(s.Last.Content))
+}
+
+func TestSet_clear_all(t *testing.T) {
+	s := NewSelections()
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection A"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection B"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+
+	sel, ok := s.Copy([]byte("Selection B\n"))
+	assert.True(t, ok)
+	assert.Equal(t, "Selection B", string(sel.Content))
+
+	s.Clear("Selection B\n", SelectionRetentionTypeAll)
+
+	require.Len(t, s.Important, 0)
+	require.Len(t, s.Ephemeral, 1)
+	assert.Equal(t, "Selection A", string(s.Ephemeral[0].Content))
+	// Last selection is preserved
+	require.Equal(t, "Selection B", string(s.Last.Content))
+
+	s.Clear("Selection A\n", SelectionRetentionTypeAll)
+
+	require.Len(t, s.Important, 0)
+	require.Len(t, s.Ephemeral, 0)
+	// Last selection is preserved
+	require.Equal(t, "Selection B", string(s.Last.Content))
+
+	// Last selection is gone after next selection is added
+	s.Add(Selection{
+		Selection: xclip.Selection{
+			Content: []byte("Selection C"),
+			Type:    xclip.ValidTargetUTF8_STRING,
+		},
+	})
+
+	buf := bytes.NewBuffer(nil)
+	s.List(buf)
+	require.Equal(t, "Selection C\n", buf.String())
+
+	require.Equal(t, "Selection C", string(s.Last.Content))
+}
