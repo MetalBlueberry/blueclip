@@ -3,6 +3,8 @@ package selections
 import (
 	"blueclip/pkg/xclip"
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"image/png"
 	"io"
@@ -20,7 +22,10 @@ func (s *Selection) Line() []byte {
 		if err != nil {
 			return []byte("Failed to decode image")
 		}
-		return []byte(fmt.Sprintf("PNG Image: %d x %d\n", img.Bounds().Max.X, img.Bounds().Max.Y))
+
+		hash := md5.Sum(s.Content)
+		hashStr := hex.EncodeToString(hash[:])
+		return []byte(fmt.Sprintf("PNG Image: %d x %d %s\n", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr))
 	}
 	singleLine := bytes.ReplaceAll(s.Content, []byte("\n"), []byte(" "))
 	return append(bytes.TrimSpace(singleLine), '\n')

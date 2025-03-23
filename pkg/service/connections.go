@@ -1,6 +1,7 @@
 package service
 
 import (
+	"blueclip/pkg/asciipng"
 	"blueclip/pkg/selections"
 	"blueclip/pkg/xclip"
 	"bufio"
@@ -155,7 +156,16 @@ func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if unindentFlag == "true" {
-		unindent(bytes.NewReader(selection.Content), resp)
+		if selection.Target == xclip.ValidTargetImagePng {
+			ascii, err := asciipng.Run(bytes.NewReader(selection.Content))
+			if err != nil {
+				log.Printf("Failed to convert image to ascii: %v", err)
+				return
+			}
+			_, err = resp.Write([]byte(ascii))
+		} else {
+			unindent(bytes.NewReader(selection.Content), resp)
+		}
 	} else {
 		_, err = resp.Write(selection.Content)
 	}
