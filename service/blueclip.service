@@ -1,0 +1,20 @@
+[Unit]
+Description=Blueclip clipboard manager service
+Documentation=https://github.com/metalblueberry/blueclip
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=HOME=%h
+WorkingDirectory=%h
+ExecStart=%h/go/bin/blueclip server
+Restart=on-failure
+RestartSec=5
+# Security settings
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=yes
+
+[Install]
+WantedBy=graphical-session.target
