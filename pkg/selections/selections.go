@@ -25,7 +25,7 @@ func (s *Selection) Line() []byte {
 
 		hash := md5.Sum(s.Content)
 		hashStr := hex.EncodeToString(hash[:])
-		return []byte(fmt.Sprintf("PNG Image: %d x %d %s\n", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr))
+		return fmt.Appendf(nil, "PNG Image: %d x %d %s\n", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
 	}
 	singleLine := bytes.ReplaceAll(s.Content, []byte("\n"), []byte(" "))
 	return append(bytes.TrimSpace(singleLine), '\n')
