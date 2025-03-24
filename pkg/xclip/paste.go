@@ -2,6 +2,7 @@ package xclip
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -41,7 +42,7 @@ func PasteOptionWithSelection(selection ClipboardSelection) PasteOption {
 }
 
 // Paste retrieves text from clipboard
-func (x *XClip) Paste(out io.Writer, opt ...PasteOption) error {
+func (x *XClip) Paste(ctx context.Context, out io.Writer, opt ...PasteOption) error {
 	opts := &PasteOptions{
 		silent: true,
 	}
@@ -89,7 +90,7 @@ func (x *XClip) Paste(out io.Writer, opt ...PasteOption) error {
 
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("xclip")
+	cmd := exec.CommandContext(ctx, "xclip")
 	cmd.Args = append([]string{"xclip"}, args...)
 	cmd.Stdout = out
 	cmd.Stderr = &stderr

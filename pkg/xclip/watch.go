@@ -79,6 +79,7 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 
 	go func() {
 		defer close(ch)
+		initialCtx, cancel := context.WithTimeout(ctx, opts.frequency)
 
 		previous := bytes.NewBuffer([]byte{})
 		current := bytes.NewBuffer([]byte{})
@@ -86,64 +87,74 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 			PasteOptionWithSelection(opts.clip),
 		}
 
-		monitorTarget, _ := findValidTarget(opts.monitorTargets, opts)
+		monitorTarget, _ := findValidTarget(initialCtx, opts.monitorTargets, opts)
 		if monitorTarget != ValidTargetUnknown {
-			err := x.Paste(previous, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
+			err := x.Paste(initialCtx, previous, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
 			if err != nil {
-				log.Fatalf("Failed to read clipboard: %v", err)
+				log.Fatalf("Failed to read inital clipboard: %v", err)
 			}
 		}
+		cancel()
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(opts.frequency):
-				monitorTarget, allTargets := findValidTarget(opts.monitorTargets, opts)
-				if monitorTarget == ValidTargetUnknown {
-					continue
-				}
+				func() {
+					ctx, cancel := context.WithTimeout(ctx, opts.frequency)
+					defer cancel()
 
-				current.Reset()
-				err := x.Paste(current, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
-				if err != nil {
-					log.Printf("Failed to read clipboard: %v", err)
-					continue
-				}
-				if bytes.Equal(previous.Bytes(), current.Bytes()) {
-					continue
-				}
+					monitorTarget, allTargets := findValidTarget(ctx, opts.monitorTargets, opts)
+					if monitorTarget == ValidTargetUnknown {
+						return
+					}
 
-				log.Printf("Detected change in clipboard %s", opts.clip)
+					current.Reset()
+					err := x.Paste(ctx, current, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
+					if err != nil {
+						log.Printf("Failed to read clipboard: %v", err)
+						return
+					}
+					if bytes.Equal(previous.Bytes(), current.Bytes()) {
+						return
+					}
 
-				previous.Reset()
-				current.WriteTo(previous)
+					log.Printf("Detected change in clipboard %s", opts.clip)
+					previous.Reset()
+					current.WriteTo(previous)
 
-				withTarget := desiredTarget(allTargets, opts.targetPriority)
-				if withTarget == ValidTargetUnknown {
-					log.Printf("No valid target found to read, available targets: %v, valid targets: %v", allTargets, opts.targetPriority)
-					continue
-				}
-				buf := bytes.NewBuffer([]byte{})
-				err = x.Paste(
-					buf,
-					append(commonPasteOpts, PasteOptionWithTarget(withTarget))...,
-				)
-				if err != nil {
-					log.Printf("Failed to read clipboard: %v", err)
-					continue
-				}
+					withTarget := desiredTarget(allTargets, opts.targetPriority)
+					if withTarget == ValidTargetUnknown {
+						log.Printf("No valid target found to read, available targets: %v, valid targets: %v", allTargets, opts.targetPriority)
+						return
+					}
+					buf := bytes.NewBuffer([]byte{})
+					err = x.Paste(
+						ctx,
+						buf,
+						append(commonPasteOpts, PasteOptionWithTarget(withTarget))...,
+					)
+					if err != nil {
+						log.Printf("Failed to read clipboard: %v", err)
+						return
+					}
 
-				ch <- NewSelection(buf.Bytes(), withTarget)
-				current.WriteTo(previous)
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- NewSelection(buf.Bytes(), withTarget):
+					}
+				}()
 			}
 		}
 	}()
 	return ch
 }
 
-func findValidTarget(targets []ValidTarget, opts *WatchOptions) (ValidTarget, []ValidTarget) {
+func findValidTarget(ctx context.Context, targets []ValidTarget, opts *WatchOptions) (ValidTarget, []ValidTarget) {
 	currentTargets, err := Targets(
+		ctx,
 		TargetsOptionWithSelection(opts.clip),
 	)
 	if err != nil {
@@ -207,7 +218,7 @@ func TargetsOptionWithExecerFn(execerFn func(*exec.Cmd) error) TargetsOption {
 	}
 }
 
-func Targets(opt ...TargetsOption) ([]ValidTarget, error) {
+func Targets(ctx context.Context, opt ...TargetsOption) ([]ValidTarget, error) {
 	opts := &TargetsOptions{
 		Silent:   true,
 		ExecerFn: realRunner,
@@ -216,7 +227,6 @@ func Targets(opt ...TargetsOption) ([]ValidTarget, error) {
 		opt(opts)
 	}
 
-	cmd := exec.Command("xclip")
 	args := []string{"-o", "-target", "TARGETS"} // output target mode
 
 	if opts.Selection != "" {
@@ -239,6 +249,7 @@ func Targets(opt ...TargetsOption) ([]ValidTarget, error) {
 		args = append(args, "-verbose")
 	}
 
+	cmd := exec.CommandContext(ctx, "xclip")
 	cmd.Args = append([]string{"xclip"}, args...)
 
 	var stdout, stderr bytes.Buffer

@@ -127,6 +127,7 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 	for _, clipboardSelection := range clipboardSelections {
 		log.Printf("Copying selection to clipboard: %s with target: %s", clipboardSelection, selection.Target)
 		err = xclip.Cli.Copy(
+			req.Context(),
 			bytes.NewReader(selection.Content),
 			xclip.CopyOptionSelection(xclip.ClipboardSelection(clipboardSelection)),
 			xclip.CopyOptionWithTarget(selection.Target),

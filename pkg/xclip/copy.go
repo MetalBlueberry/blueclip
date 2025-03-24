@@ -2,6 +2,7 @@ package xclip
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -55,7 +56,7 @@ func CopyOptionWithTarget(priority ValidTarget) CopyOption {
 }
 
 // Copy copies text to clipboard
-func (x *XClip) Copy(data io.Reader, opt ...CopyOption) error {
+func (x *XClip) Copy(ctx context.Context, data io.Reader, opt ...CopyOption) error {
 	opts := &CopyOptions{
 		silent: true,
 	}
@@ -63,7 +64,6 @@ func (x *XClip) Copy(data io.Reader, opt ...CopyOption) error {
 		opt(opts)
 	}
 
-	cmd := exec.Command("xclip")
 	args := []string{"-i"}
 
 	if opts.selection != ClipboardSelectionUndefined {
@@ -102,6 +102,7 @@ func (x *XClip) Copy(data io.Reader, opt ...CopyOption) error {
 		args = append(args, "-verbose")
 	}
 
+	cmd := exec.CommandContext(ctx, "xclip")
 	cmd.Args = append([]string{"xclip"}, args...)
 	cmd.Stdin = data
 

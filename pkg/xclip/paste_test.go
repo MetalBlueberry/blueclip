@@ -2,6 +2,7 @@ package xclip
 
 import (
 	"bytes"
+	"context"
 	"testing"
 )
 
@@ -15,7 +16,7 @@ func TestPaste(t *testing.T) {
 		}
 
 		buf := &bytes.Buffer{}
-		err := xclip.Paste(buf)
+		err := xclip.Paste(context.Background(), buf)
 		if err != nil {
 			t.Errorf("Paste() error = %v", err)
 		}
@@ -34,7 +35,7 @@ func TestPaste(t *testing.T) {
 		}
 
 		buf := &bytes.Buffer{}
-		err := xclip.Paste(buf, PasteOptionWithSelection(ClipboardSelectionPrimary))
+		err := xclip.Paste(context.Background(), buf, PasteOptionWithSelection(ClipboardSelectionPrimary))
 		if err != nil {
 			t.Errorf("Paste() error = %v", err)
 		}
