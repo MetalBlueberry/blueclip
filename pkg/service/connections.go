@@ -77,6 +77,22 @@ func (s *Service) HandleClear(resp http.ResponseWriter, req *http.Request) {
 		typeString = "all"
 	}
 
+	all := query.Get("all")
+	if all == "true" {
+		log.Printf("Clearing all selections of type: %s", typeString)
+		switch typ := selections.SelectionRetentionType(typeString); typ {
+		case selections.SelectionRetentionTypeAll,
+			selections.SelectionRetentionTypeEphemeral,
+			selections.SelectionRetentionTypeImportant:
+			s.selections.ClearAll(typ)
+		default:
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
+			return
+		}
+		return
+	}
+
 	log.Printf("Clearing selections of type: %s", typeString)
 	pattern, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -86,15 +102,27 @@ func (s *Service) HandleClear(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	switch typ := selections.SelectionRetentionType(typeString); typ {
-	case selections.SelectionRetentionTypeAll,
-		selections.SelectionRetentionTypeEphemeral,
-		selections.SelectionRetentionTypeImportant:
-		s.selections.Clear(string(pattern), typ)
-	default:
-		resp.WriteHeader(http.StatusBadRequest)
-		resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
-		return
+	patterns := bytes.Split(pattern, []byte("\000"))
+	for _, pattern := range patterns {
+		if len(pattern) == 0 {
+			continue
+		}
+		switch typ := selections.SelectionRetentionType(typeString); typ {
+		case selections.SelectionRetentionTypeAll,
+			selections.SelectionRetentionTypeEphemeral,
+			selections.SelectionRetentionTypeImportant:
+			found := s.selections.Clear(pattern, typ)
+			if !found {
+				log.Printf("No match found for pattern: %s", string(pattern))
+				resp.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(resp, "no match found for pattern \"%s\"", string(pattern))
+				return
+			}
+		default:
+			resp.WriteHeader(http.StatusBadRequest)
+			resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
+			return
+		}
 	}
 
 	resp.WriteHeader(http.StatusOK)

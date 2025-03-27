@@ -16,7 +16,13 @@ type Selection struct {
 	xclip.Selection
 }
 
+// Line appends a null terminator to the selection
 func (s *Selection) Line() []byte {
+	return append(s.Clean(), '\000')
+}
+
+// Clean returns a byte valid for line comparison
+func (s *Selection) Clean() []byte {
 	if s.Target == xclip.ValidTargetImagePng {
 		img, err := png.Decode(bytes.NewReader(s.Content))
 		if err != nil {
@@ -25,17 +31,16 @@ func (s *Selection) Line() []byte {
 
 		hash := md5.Sum(s.Content)
 		hashStr := hex.EncodeToString(hash[:])
-		return fmt.Appendf(nil, "PNG Image: %d x %d %s\n", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
+		return fmt.Appendf(nil, "PNG Image: %d x %d %s", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
 	}
-	// singleLine := bytes.ReplaceAll(s.Content, []byte("\n"), []byte(" "))
-	// return append(bytes.TrimSpace(singleLine), '\n')
-	return append(bytes.TrimSpace(s.Content), '\000')
+	return s.Content
 }
 
 func (s *Selection) String() string {
 	return string(s.Content)
 }
 
+// Compares the actual content
 func (s *Selection) Equal(other Selection) bool {
 	return bytes.Equal(s.Content, other.Content)
 }
@@ -58,27 +63,33 @@ const (
 	SelectionRetentionTypeImportant SelectionRetentionType = "important"
 )
 
-func (s *Set) Clear(pattern string, typ SelectionRetentionType) {
+func (s *Set) ClearAll(typ SelectionRetentionType) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if pattern == "" {
-		if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeEphemeral {
-			s.Ephemeral = []Selection{}
-		}
-		if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeImportant {
-			s.Important = []Selection{}
-		}
-		return
+	if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeEphemeral {
+		log.Printf("Clearing all ephemeral selections")
+		s.Ephemeral = []Selection{}
 	}
+	if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeImportant {
+		log.Printf("Clearing all important selections")
+		s.Important = []Selection{}
+	}
+}
+
+func (s *Set) Clear(pattern []byte, typ SelectionRetentionType) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	found := false
 
 	if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeEphemeral {
 		filtered := []Selection{}
 		for _, sel := range s.Ephemeral {
-			if !bytes.Equal(sel.Line(), []byte(pattern)) {
+			if !bytes.Equal(sel.Clean(), pattern) {
 				filtered = append(filtered, sel)
 			} else {
 				log.Printf("clearing ephemeral selection: %d bytes", len(sel.Content))
+				found = true
 			}
 		}
 		s.Ephemeral = filtered
@@ -87,14 +98,17 @@ func (s *Set) Clear(pattern string, typ SelectionRetentionType) {
 	if typ == SelectionRetentionTypeAll || typ == SelectionRetentionTypeImportant {
 		filtered := []Selection{}
 		for _, sel := range s.Important {
-			if !bytes.Equal(sel.Line(), []byte(pattern)) {
+			if !bytes.Equal(sel.Clean(), pattern) {
 				filtered = append(filtered, sel)
 			} else {
 				log.Printf("clearing important selection: %d bytes", len(sel.Content))
+				found = true
 			}
 		}
 		s.Important = filtered
 	}
+
+	return found
 }
 
 type Options struct {
@@ -222,11 +236,19 @@ func (s *Set) Copy(line []byte) (Selection, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// Last character is a null terminator or a new line
-	cleanLine := line[:len(line)-1]
+	// Handle empty line
+	if len(line) == 0 {
+		return Selection{}, false
+	}
+
+	// Remove null terminator if present
+	cleanLine := line
+	if line[len(line)-1] == '\000' || line[len(line)-1] == '\n' {
+		cleanLine = line[:len(line)-1]
+	}
 
 	for i, selection := range s.Important {
-		if bytes.Equal(cleanLine, selection.Content) {
+		if bytes.Equal(cleanLine, selection.Clean()) {
 			s.Last = &selection
 			s.Important = append(s.Important[:i], s.Important[i+1:]...)
 			s.Important = append(s.Important, selection)
@@ -238,7 +260,7 @@ func (s *Set) Copy(line []byte) (Selection, bool) {
 	found := false
 	filtered := []Selection{}
 	for _, selection := range s.Ephemeral {
-		if bytes.Equal(cleanLine, selection.Content) {
+		if bytes.Equal(cleanLine, selection.Clean()) {
 			log.Printf("Moving selection to important list")
 			sel = selection
 			found = true
@@ -261,17 +283,25 @@ func (s *Set) FindMatch(line []byte) (Selection, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// Last character is a null terminator or a new line
-	cleanLine := line[:len(line)-1]
+	// Handle empty line
+	if len(line) == 0 {
+		return Selection{}, false
+	}
+
+	// Remove null terminator if present
+	cleanLine := line
+	if line[len(line)-1] == '\000' || line[len(line)-1] == '\n' {
+		cleanLine = line[:len(line)-1]
+	}
 
 	for _, selection := range s.Important {
-		if bytes.Equal(cleanLine, selection.Content) {
+		if bytes.Equal(cleanLine, selection.Clean()) {
 			return selection, true
 		}
 	}
 
 	for _, selection := range s.Ephemeral {
-		if bytes.Equal(cleanLine, selection.Content) {
+		if bytes.Equal(cleanLine, selection.Clean()) {
 			return selection, true
 		}
 	}
