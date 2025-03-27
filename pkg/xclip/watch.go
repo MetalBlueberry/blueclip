@@ -87,7 +87,7 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 			PasteOptionWithSelection(opts.clip),
 		}
 
-		monitorTarget, _ := findValidTarget(initialCtx, opts.monitorTargets, opts)
+		monitorTarget, _ := findValidTarget(initialCtx, opts.monitorTargets, opts, x)
 		if monitorTarget != ValidTargetUnknown {
 			err := x.Paste(initialCtx, previous, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
 			if err != nil {
@@ -105,7 +105,7 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 					ctx, cancel := context.WithTimeout(ctx, opts.frequency)
 					defer cancel()
 
-					monitorTarget, allTargets := findValidTarget(ctx, opts.monitorTargets, opts)
+					monitorTarget, allTargets := findValidTarget(ctx, opts.monitorTargets, opts, x)
 					if monitorTarget == ValidTargetUnknown {
 						return
 					}
@@ -152,8 +152,8 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 	return ch
 }
 
-func findValidTarget(ctx context.Context, targets []ValidTarget, opts *WatchOptions) (ValidTarget, []ValidTarget) {
-	currentTargets, err := Targets(
+func findValidTarget(ctx context.Context, targets []ValidTarget, opts *WatchOptions, x *XClip) (ValidTarget, []ValidTarget) {
+	currentTargets, err := x.Targets(
 		ctx,
 		TargetsOptionWithSelection(opts.clip),
 	)
@@ -181,8 +181,6 @@ type TargetsOptions struct {
 	Silent    bool               // -silent
 	Quiet     bool               // -quiet
 	Verbose   bool               // -verbose
-
-	ExecerFn func(*exec.Cmd) error
 }
 
 type ValidTarget string
@@ -212,16 +210,9 @@ func TargetsOptionWithSelection(selection ClipboardSelection) TargetsOption {
 	}
 }
 
-func TargetsOptionWithExecerFn(execerFn func(*exec.Cmd) error) TargetsOption {
-	return func(o *TargetsOptions) {
-		o.ExecerFn = execerFn
-	}
-}
-
-func Targets(ctx context.Context, opt ...TargetsOption) ([]ValidTarget, error) {
+func (x *XClip) Targets(ctx context.Context, opt ...TargetsOption) ([]ValidTarget, error) {
 	opts := &TargetsOptions{
-		Silent:   true,
-		ExecerFn: realRunner,
+		Silent: true,
 	}
 	for _, opt := range opt {
 		opt(opts)
@@ -256,7 +247,7 @@ func Targets(ctx context.Context, opt ...TargetsOption) ([]ValidTarget, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if err := opts.ExecerFn(cmd); err != nil {
+	if err := x.RunFn(cmd); err != nil {
 		return nil, fmt.Errorf("xclip failed: %v, stderr: %s", err, stderr.String())
 	}
 

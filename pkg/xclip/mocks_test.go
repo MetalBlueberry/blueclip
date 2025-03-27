@@ -33,7 +33,7 @@ func (m *MockExecer) Run(cmd *exec.Cmd) error {
 	args := strings.Join(cmd.Args, " ")
 	v, ok := m.calls[args]
 	if !ok {
-		m.t.Errorf("Run() called with unexpected args: %s", args)
+		m.t.Fatalf("Run() called with unexpected args: %s", args)
 		return fmt.Errorf("Run() called with unexpected args: %s", args)
 	}
 	cmd.Stdout.Write(v[0])

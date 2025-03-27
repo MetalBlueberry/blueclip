@@ -27,8 +27,9 @@ func (s *Selection) Line() []byte {
 		hashStr := hex.EncodeToString(hash[:])
 		return fmt.Appendf(nil, "PNG Image: %d x %d %s\n", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
 	}
-	singleLine := bytes.ReplaceAll(s.Content, []byte("\n"), []byte(" "))
-	return append(bytes.TrimSpace(singleLine), '\n')
+	// singleLine := bytes.ReplaceAll(s.Content, []byte("\n"), []byte(" "))
+	// return append(bytes.TrimSpace(singleLine), '\n')
+	return append(bytes.TrimSpace(s.Content), '\000')
 }
 
 func (s *Selection) String() string {
@@ -221,8 +222,11 @@ func (s *Set) Copy(line []byte) (Selection, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	// Last character is a null terminator or a new line
+	cleanLine := line[:len(line)-1]
+
 	for i, selection := range s.Important {
-		if bytes.Equal(line, selection.Line()) {
+		if bytes.Equal(cleanLine, selection.Content) {
 			s.Last = &selection
 			s.Important = append(s.Important[:i], s.Important[i+1:]...)
 			s.Important = append(s.Important, selection)
@@ -234,7 +238,7 @@ func (s *Set) Copy(line []byte) (Selection, bool) {
 	found := false
 	filtered := []Selection{}
 	for _, selection := range s.Ephemeral {
-		if bytes.Equal(line, selection.Line()) {
+		if bytes.Equal(cleanLine, selection.Content) {
 			log.Printf("Moving selection to important list")
 			sel = selection
 			found = true
@@ -257,14 +261,17 @@ func (s *Set) FindMatch(line []byte) (Selection, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	// Last character is a null terminator or a new line
+	cleanLine := line[:len(line)-1]
+
 	for _, selection := range s.Important {
-		if bytes.Equal(line, selection.Line()) {
+		if bytes.Equal(cleanLine, selection.Content) {
 			return selection, true
 		}
 	}
 
 	for _, selection := range s.Ephemeral {
-		if bytes.Equal(line, selection.Line()) {
+		if bytes.Equal(cleanLine, selection.Content) {
 			return selection, true
 		}
 	}

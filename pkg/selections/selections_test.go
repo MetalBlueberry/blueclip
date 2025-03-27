@@ -20,7 +20,7 @@ func TestSet_add_single(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "test\n", buf.String())
+	require.Equal(t, "test\000", buf.String())
 }
 
 func TestSet_add_Multiple(t *testing.T) {
@@ -41,7 +41,7 @@ func TestSet_add_Multiple(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "Selection B\nSelection A\n", buf.String())
+	require.Equal(t, "Selection B\000Selection A\000", buf.String())
 }
 
 func TestSet_incremental_filter_on_ephemeral(t *testing.T) {
@@ -64,7 +64,7 @@ func TestSet_incremental_filter_on_ephemeral(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "Selection B\n", buf.String())
+	require.Equal(t, "Selection B\000", buf.String())
 }
 
 func TestSet_incremental_filter_on_ephemeral_is_preserved_after(t *testing.T) {
@@ -85,7 +85,7 @@ func TestSet_incremental_filter_on_ephemeral_is_preserved_after(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "Selection\nSelection B\n", buf.String())
+	require.Equal(t, "Selection\000Selection B\000", buf.String())
 }
 
 func TestSet_incremental_filter_ignores_important(t *testing.T) {
@@ -98,7 +98,7 @@ func TestSet_incremental_filter_ignores_important(t *testing.T) {
 		},
 	})
 
-	sel, ok := s.Copy([]byte("Selection\n"))
+	sel, ok := s.Copy([]byte("Selection\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection", string(sel.Content))
 
@@ -117,7 +117,7 @@ func TestSet_incremental_filter_ignores_important(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	assert.Equal(t, "Selection C\nSelection\nSelection B\n", buf.String())
+	assert.Equal(t, "Selection C\000Selection\000Selection B\000", buf.String())
 
 	require.Len(t, s.Important, 1)
 	assert.Equal(t, "Selection", string(s.Important[0].Content))
@@ -148,7 +148,7 @@ func TestSet_add_duplicate(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "Selection A\nSelection B\n", buf.String())
+	require.Equal(t, "Selection A\000Selection B\000", buf.String())
 }
 
 func TestSet_add_duplicate_in_important(t *testing.T) {
@@ -168,11 +168,11 @@ func TestSet_add_duplicate_in_important(t *testing.T) {
 		},
 	})
 
-	selA, ok := s.Copy([]byte("Selection A\n"))
+	selA, ok := s.Copy([]byte("Selection A\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection A", string(selA.Content))
 
-	selB, ok := s.Copy([]byte("Selection B\n"))
+	selB, ok := s.Copy([]byte("Selection B\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(selB.Content))
 
@@ -185,7 +185,7 @@ func TestSet_add_duplicate_in_important(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	assert.Equal(t, "Selection A\nSelection B\n", buf.String())
+	assert.Equal(t, "Selection A\000Selection B\000", buf.String())
 
 	require.Len(t, s.Important, 2)
 	assert.Equal(t, "Selection B", string(s.Important[0].Content))
@@ -220,13 +220,13 @@ func TestSet_content_is_marked_as_important_when_copied(t *testing.T) {
 		},
 	})
 
-	sel, ok := s.Copy([]byte("Selection A\n"))
+	sel, ok := s.Copy([]byte("Selection A\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection A", string(sel.Content))
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	assert.Equal(t, "Selection A\nSelection D\nSelection C\nSelection B\n", buf.String())
+	assert.Equal(t, "Selection A\000Selection D\000Selection C\000Selection B\000", buf.String())
 
 	require.Len(t, s.Important, 1)
 	assert.Equal(t, "Selection A", string(s.Important[0].Content))
@@ -260,7 +260,7 @@ func TestSet_last_selection_is_always_first(t *testing.T) {
 		},
 	})
 
-	sel, ok := s.Copy([]byte("Selection A\n"))
+	sel, ok := s.Copy([]byte("Selection A\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection A", string(sel.Content))
 
@@ -279,19 +279,19 @@ func TestSet_last_selection_is_always_first(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	assert.Equal(t, "Selection F\nSelection A\nSelection E\nSelection D\nSelection C\nSelection B\n", buf.String())
+	assert.Equal(t, "Selection F\000Selection A\000Selection E\000Selection D\000Selection C\000Selection B\000", buf.String())
 
 	require.Len(t, s.Important, 1)
 	assert.Equal(t, "Selection A", string(s.Important[0].Content))
 	require.Len(t, s.Ephemeral, 5)
 
-	sel, ok = s.Copy([]byte("Selection B\n"))
+	sel, ok = s.Copy([]byte("Selection B\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
 	buf = bytes.NewBuffer(nil)
 	s.List(buf)
-	assert.Equal(t, "Selection B\nSelection F\nSelection A\nSelection E\nSelection D\nSelection C\n", buf.String())
+	assert.Equal(t, "Selection B\000Selection F\000Selection A\000Selection E\000Selection D\000Selection C\000", buf.String())
 
 	require.Len(t, s.Important, 2)
 	assert.Equal(t, "Selection A", string(s.Important[0].Content))
@@ -314,15 +314,15 @@ func TestSet_clear_ephemeral(t *testing.T) {
 		},
 	})
 
-	sel, ok := s.Copy([]byte("Selection B\n"))
+	sel, ok := s.Copy([]byte("Selection B\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection A\n", SelectionRetentionTypeEphemeral)
+	s.Clear("Selection A\000", SelectionRetentionTypeEphemeral)
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "Selection B\n", buf.String())
+	require.Equal(t, "Selection B\000", buf.String())
 
 	require.Len(t, s.Important, 1)
 	assert.Equal(t, "Selection B", string(s.Important[0].Content))
@@ -346,11 +346,11 @@ func TestSet_clear_important(t *testing.T) {
 		},
 	})
 
-	sel, ok := s.Copy([]byte("Selection B\n"))
+	sel, ok := s.Copy([]byte("Selection B\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection B\n", SelectionRetentionTypeImportant)
+	s.Clear("Selection B\000", SelectionRetentionTypeImportant)
 
 	require.Len(t, s.Important, 0)
 	require.Len(t, s.Ephemeral, 1)
@@ -374,11 +374,11 @@ func TestSet_clear_all(t *testing.T) {
 		},
 	})
 
-	sel, ok := s.Copy([]byte("Selection B\n"))
+	sel, ok := s.Copy([]byte("Selection B\000"))
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection B\n", SelectionRetentionTypeAll)
+	s.Clear("Selection B\000", SelectionRetentionTypeAll)
 
 	require.Len(t, s.Important, 0)
 	require.Len(t, s.Ephemeral, 1)
@@ -386,7 +386,7 @@ func TestSet_clear_all(t *testing.T) {
 	// Last selection is preserved
 	require.Equal(t, "Selection B", string(s.Last.Content))
 
-	s.Clear("Selection A\n", SelectionRetentionTypeAll)
+	s.Clear("Selection A\000", SelectionRetentionTypeAll)
 
 	require.Len(t, s.Important, 0)
 	require.Len(t, s.Ephemeral, 0)
@@ -403,7 +403,7 @@ func TestSet_clear_all(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
-	require.Equal(t, "Selection C\n", buf.String())
+	require.Equal(t, "Selection C\000", buf.String())
 
 	require.Equal(t, "Selection C", string(s.Last.Content))
 }

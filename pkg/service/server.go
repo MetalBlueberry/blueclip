@@ -69,7 +69,7 @@ func (s *Service) Run(ctx context.Context) error {
 			xclip.ValidTargetUTF8_STRING,
 		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionClipboard),
-		xclip.WatchOptionWithFrequency(200*time.Millisecond),
+		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
 	)
 
 	primary := xclip.Cli.Watch(
