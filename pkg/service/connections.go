@@ -119,6 +119,7 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	clipboardSelections := req.URL.Query()["clipboard-selection"]
+	log.Printf("Clipboard selections: %v", clipboardSelections)
 
 	if len(clipboardSelections) == 0 {
 		clipboardSelections = []string{string(xclip.ClipboardSelectionClipboard)}
