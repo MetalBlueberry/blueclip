@@ -318,7 +318,7 @@ func TestSet_clear_ephemeral(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection A\000", SelectionRetentionTypeEphemeral)
+	s.Clear([]byte("Selection A\000"), SelectionRetentionTypeEphemeral)
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)

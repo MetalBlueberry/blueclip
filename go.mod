@@ -3,6 +3,7 @@ module blueclip
 go 1.23.6
 
 require (
+	github.com/jezek/xgb v1.1.1
 	github.com/qeesung/image2ascii v1.0.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0

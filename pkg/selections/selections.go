@@ -17,6 +17,7 @@ type Selection struct {
 }
 
 // Line appends a null terminator to the selection
+// Used to print a list of elements in a line-oriented format
 func (s *Selection) Line() []byte {
 	return append(s.Clean(), '\000')
 }
@@ -31,9 +32,9 @@ func (s *Selection) Clean() []byte {
 
 		hash := md5.Sum(s.Content)
 		hashStr := hex.EncodeToString(hash[:])
-		return fmt.Appendf(nil, "PNG Image: %d x %d %s", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
+		return fmt.Appendf(nil, "Target: %s : %d x %d %s", s.Target, img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
 	}
-	return s.Content
+	return fmt.Appendf(nil, "Target: %s\n%s", s.Target, s.Content)
 }
 
 func (s *Selection) String() string {
