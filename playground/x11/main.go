@@ -123,7 +123,7 @@ func getSupportedMimes(conn *xgb.Conn, win xproto.Window, selection xproto.Atom,
 	//ownWindow  conn?
 	//currentTime
 	log.Print(win, selection, targets, xproto.TimeCurrentTime)
-	xproto.ConvertSelection(conn, win, selection, targets, 0, xproto.TimeCurrentTime).Check()
+	xproto.ConvertSelection(conn, win, selection, targets, targets, xproto.TimeCurrentTime)
 
 	// Wait for the SelectionNotify event
 	for {
@@ -136,7 +136,8 @@ func getSupportedMimes(conn *xgb.Conn, win xproto.Window, selection xproto.Atom,
 
 		if selNotify, ok := ev.(xproto.SelectionNotifyEvent); ok {
 			if selNotify.Property == xproto.AtomNone {
-				return nil
+				log.Printf("Property is none")
+				continue
 			}
 
 			reply, err := xproto.GetProperty(conn, false, win, selNotify.Property, xproto.AtomAtom, 0, (1<<32)-1).Reply()
@@ -145,6 +146,7 @@ func getSupportedMimes(conn *xgb.Conn, win xproto.Window, selection xproto.Atom,
 				return nil
 			}
 
+			log.Printf("targets: %v", reply.Value)
 			// Convert the []byte to []xproto.Atom
 			formats := make([]xproto.Atom, len(reply.Value)/4)
 			for i := 0; i < len(formats); i++ {
@@ -152,9 +154,14 @@ func getSupportedMimes(conn *xgb.Conn, win xproto.Window, selection xproto.Atom,
 			}
 
 			// Delete the property to let the owner know we've read it
-			xproto.DeleteProperty(conn, win, selNotify.Property)
+			err = xproto.DeletePropertyChecked(conn, win, selNotify.Property).Check()
+			if err != nil {
+				log.Printf("Failed to delete property: %v", err)
+			}
 
 			return formats
+		} else {
+			log.Printf("Unknown event: %v", ev)
 		}
 	}
 }
@@ -169,6 +176,7 @@ func getPriorityFormat(supportedFormats []xproto.Atom, atoms AtomInfo) (xproto.A
 		atoms.imagePng,
 		atoms.imageJpeg,
 		atoms.imageBmp,
+		atoms.timestamp,
 	}
 
 	for _, prio := range priorities {
@@ -246,7 +254,6 @@ func readClipboard(useImages bool, usePrimary bool) {
 		if selNotify, ok := ev.(xproto.SelectionNotifyEvent); ok {
 			if selNotify.Property == xproto.AtomNone {
 				fmt.Println("Selection conversion failed")
-				return
 			}
 
 			// Check if it's an incremental transfer
@@ -389,6 +396,8 @@ func writeClipboard(text string, usePrimary bool) {
 				fmt.Println("Lost clipboard ownership")
 				done = true
 			}
+		default:
+			log.Printf("Unknown event: %v", e)
 		}
 	}
 }
@@ -412,11 +421,6 @@ func main() {
 		}
 		writeClipboard(os.Args[2], false)
 
-		// Keep process running to maintain clipboard ownership
-		fmt.Println("Text copied to clipboard. Press Ctrl+C to exit.")
-		for {
-			time.Sleep(time.Second)
-		}
 	case "writeprimary":
 		if len(os.Args) < 3 {
 			fmt.Println("Usage: go run main.go writeprimary <text>")
@@ -424,11 +428,6 @@ func main() {
 		}
 		writeClipboard(os.Args[2], true)
 
-		// Keep process running to maintain clipboard ownership
-		fmt.Println("Text copied to primary selection. Press Ctrl+C to exit.")
-		for {
-			time.Sleep(time.Second)
-		}
 	default:
 		fmt.Println("Invalid option. Use 'read', 'write', 'readprimary', or 'writeprimary'")
 		os.Exit(1)
