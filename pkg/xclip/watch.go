@@ -33,6 +33,7 @@ func WatchOptionWithClipboardSelection(clip ClipboardSelection) WatchOption {
 	}
 }
 
+// WatchOptionWithMonitorTargets sets the targets to monitor for changes in order of priority.
 func WatchOptionWithMonitorTargets(targets []ValidTarget) WatchOption {
 	return func(o *WatchOptions) error {
 		o.monitorTargets = targets
@@ -50,6 +51,7 @@ func WatchOptionWithFrequency(frequency time.Duration) WatchOption {
 	}
 }
 
+// WatchOptionWithTargetPriority sets the priority of the target to use when copying.
 func WatchOptionWithTargetPriority(priority []ValidTarget) WatchOption {
 	return func(o *WatchOptions) error {
 		o.targetPriority = priority

@@ -62,7 +62,10 @@ func (s *Service) Run(ctx context.Context) error {
 
 	clipboard := xclip.Cli.Watch(
 		ctx,
-		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
+		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{
+			xclip.ValidTargetTIMESTAMP,
+			xclip.ValidTargetImagePng,
+		}),
 		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
 			xclip.ValidTargetxSpecialGnomeCopiedFiles,
 			xclip.ValidTargetImagePng,
@@ -74,7 +77,10 @@ func (s *Service) Run(ctx context.Context) error {
 
 	primary := xclip.Cli.Watch(
 		ctx,
-		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
+		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{
+			xclip.ValidTargetTIMESTAMP,
+			xclip.ValidTargetImagePng,
+		}),
 		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
 			xclip.ValidTargetxSpecialGnomeCopiedFiles,
 			xclip.ValidTargetImagePng,
