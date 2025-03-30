@@ -159,7 +159,7 @@ func getSupportedMimes(conn *xgb.Conn, win xproto.Window, selection xproto.Atom,
 }
 
 // getPriorityFormat chooses the best available format from the supported formats
-func getPriorityFormat(supportedFormats []xproto.Atom, atoms AtomInfo) (xproto.Atom, bool) {
+func getPriorityFormat(supportedFormats []xproto.Atom, atoms AtomInfo) []xproto.Atom {
 	// Priority order for formats
 	priorities := []xproto.Atom{
 		atoms.utf8String,
@@ -170,16 +170,17 @@ func getPriorityFormat(supportedFormats []xproto.Atom, atoms AtomInfo) (xproto.A
 		atoms.imageBmp,
 		atoms.timestamp,
 	}
+	results := []xproto.Atom{}
 
 	for _, prio := range priorities {
 		for _, format := range supportedFormats {
 			if format == prio {
-				return format, true
+				results = append(results, format)
 			}
 		}
 	}
 
-	return 0, false
+	return results
 }
 
 func readClipboard(useImages bool, usePrimary bool) {
@@ -206,15 +207,15 @@ func readClipboard(useImages bool, usePrimary bool) {
 	fmt.Println("Clipboard owner:", ownerName)
 
 	// First get the supported target formats
-	supportedFormats := getSupportedMimes(conn, win, selection, atoms.targets)
+	availableFormats := getSupportedMimes(conn, win, selection, atoms.targets)
 
-	if len(supportedFormats) == 0 {
+	if len(availableFormats) == 0 {
 		fmt.Println("No formats available in clipboard")
 		return
 	}
 
 	fmt.Println("Available formats:")
-	for _, f := range supportedFormats {
+	for _, f := range availableFormats {
 		name, err := xproto.GetAtomName(conn, f).Reply()
 		if err == nil {
 			fmt.Printf("  - %s\n", name.Name)
@@ -222,65 +223,81 @@ func readClipboard(useImages bool, usePrimary bool) {
 	}
 
 	// Choose the format to request based on priority
-	targetFormat, found := getPriorityFormat(supportedFormats, atoms)
-	if !found {
+	supportedFormats := getPriorityFormat(availableFormats, atoms)
+	if len(supportedFormats) == 0 {
 		fmt.Println("No supported format found in clipboard")
 		return
 	}
-
-	// Get the atom name for logging
-	formatName, _ := xproto.GetAtomName(conn, targetFormat).Reply()
-	fmt.Printf("Using format: %s\n", formatName.Name)
-
-	// Request the content with the chosen format
-	xproto.ConvertSelection(conn, win, selection, targetFormat, targetFormat, xproto.TimeCurrentTime)
-
-	// Wait for the data
-	for {
-		ev, err := conn.WaitForEvent()
-		if err != nil {
-			log.Printf("Event error: %v", err)
-			continue
+	log.Printf("Supported formats:")
+	for _, f := range supportedFormats {
+		name, err := xproto.GetAtomName(conn, f).Reply()
+		if err == nil {
+			fmt.Printf("  - %s\n", name.Name)
 		}
+	}
 
-		if selNotify, ok := ev.(xproto.SelectionNotifyEvent); ok {
-			if selNotify.Property == xproto.AtomNone {
-				fmt.Println("Selection conversion failed")
-			}
+	for _, targetFormat := range supportedFormats {
+		formatName, _ := xproto.GetAtomName(conn, targetFormat).Reply()
+		fmt.Printf("Using format: %s\n", formatName.Name)
 
-			// Check if it's an incremental transfer
-			if isIncrementalTransfer(conn, win, selNotify.Property, atoms.incr) {
-				xproto.DeleteProperty(conn, win, selNotify.Property)
-				fmt.Println("Incremental transfer not supported")
-				return
-			}
+		// Request the content with the chosen format
+		xproto.ConvertSelection(conn, win, selection, targetFormat, targetFormat, xproto.TimeCurrentTime)
 
-			// Get the property data
-			reply, err := xproto.GetProperty(conn, false, win, selNotify.Property, selNotify.Target, 0, (1<<32)-1).Reply()
+		// Wait for the data
+		for {
+			ev, err := conn.WaitForEvent()
 			if err != nil {
-				log.Fatalf("Failed to get property: %v", err)
+				log.Printf("Event error: %v", err)
+				continue
 			}
 
-			// Handle based on format
-			switch targetFormat {
-			case atoms.utf8String, atoms.string, atoms.textPlain:
-				fmt.Println("Text content:", string(reply.Value))
-			case atoms.imagePng:
-				fmt.Printf("PNG image data: %d bytes\n", len(reply.Value))
-				// Here you would save or process the PNG data
-			case atoms.imageJpeg:
-				fmt.Printf("JPEG image data: %d bytes\n", len(reply.Value))
-				// Here you would save or process the JPEG data
-			case atoms.imageBmp:
-				fmt.Printf("BMP image data: %d bytes\n", len(reply.Value))
-				// Here you would save or process the BMP data
-			default:
-				fmt.Printf("Unknown format data: %d bytes\n", len(reply.Value))
-			}
+			if selNotify, ok := ev.(xproto.SelectionNotifyEvent); ok {
+				if selNotify.Property == xproto.AtomNone {
+					fmt.Println("Selection conversion failed")
+				}
 
-			// Delete the property to let the owner know we've read it
-			xproto.DeleteProperty(conn, win, selNotify.Property)
-			return
+				// Check if it's an incremental transfer
+				if isIncrementalTransfer(conn, win, selNotify.Property, atoms.incr) {
+					xproto.DeleteProperty(conn, win, selNotify.Property)
+					fmt.Println("Incremental transfer not supported")
+					return
+				}
+
+				// Handle based on format
+				switch targetFormat {
+				case atoms.utf8String, atoms.string, atoms.textPlain:
+					reply, err := xproto.GetProperty(conn, false, win, selNotify.Property, selNotify.Target, 0, (1<<32)-1).Reply()
+					if err != nil {
+						log.Fatalf("Failed to get property: %v", err)
+					} else {
+						fmt.Println("Text content:", string(reply.Value))
+					}
+				case atoms.imagePng:
+					reply, err := xproto.GetProperty(conn, false, win, selNotify.Property, selNotify.Target, 0, (1<<32)-1).Reply()
+					if err != nil {
+						log.Fatalf("Failed to get property: %v", err)
+					} else {
+						fmt.Printf("PNG image data: %d bytes\n", len(reply.Value))
+					}
+				case atoms.timestamp:
+					reply, err := xproto.GetProperty(conn, false, win, selNotify.Property, xproto.AtomInteger, 0, (1<<32)-1).Reply()
+					if err != nil {
+						log.Fatalf("Failed to get property: %v", err)
+					}
+					if len(reply.Value) >= 4 {
+						timestamp := xgb.Get32(reply.Value)
+						fmt.Printf("Timestamp: %d\n", timestamp)
+					} else {
+						fmt.Println("Invalid timestamp data length")
+					}
+				default:
+					fmt.Printf("Unknown format data: %d bytes\n", targetFormat)
+				}
+
+				// Delete the property to let the owner know we've read it
+				xproto.DeleteProperty(conn, win, selNotify.Property)
+				break
+			}
 		}
 	}
 }
