@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/jezek/xgb"
 	"github.com/jezek/xgb/xproto"
@@ -115,13 +114,6 @@ func isIncrementalTransfer(conn *xgb.Conn, win xproto.Window, prop xproto.Atom, 
 func getSupportedMimes(conn *xgb.Conn, win xproto.Window, selection xproto.Atom, targets xproto.Atom) []xproto.Atom {
 	// Request the targets
 
-	//xConvertSelection
-	//display win
-	//clipboard selection
-	//targetMime
-	//selectionTarget
-	//ownWindow  conn?
-	//currentTime
 	log.Print(win, selection, targets, xproto.TimeCurrentTime)
 	xproto.ConvertSelection(conn, win, selection, targets, targets, xproto.TimeCurrentTime)
 
@@ -258,6 +250,7 @@ func readClipboard(useImages bool, usePrimary bool) {
 
 			// Check if it's an incremental transfer
 			if isIncrementalTransfer(conn, win, selNotify.Property, atoms.incr) {
+				xproto.DeleteProperty(conn, win, selNotify.Property)
 				fmt.Println("Incremental transfer not supported")
 				return
 			}
@@ -292,6 +285,32 @@ func readClipboard(useImages bool, usePrimary bool) {
 	}
 }
 
+// getTimestamp gets a valid timestamp by appending to a temporary property
+func getTimestamp(conn *xgb.Conn, win xproto.Window) xproto.Timestamp {
+	// Create a temporary property
+	tempAtom := getAtom(conn, "TEMP")
+
+	// Append empty data to get a timestamp
+	xproto.ChangeProperty(conn, xproto.PropModeAppend, win, tempAtom, xproto.AtomString, 8, 0, []byte{})
+
+	// Wait for PropertyNotify event
+	for {
+		ev, err := conn.WaitForEvent()
+		if err != nil {
+			log.Printf("Event error: %v", err)
+			continue
+		}
+
+		if propNotify, ok := ev.(xproto.PropertyNotifyEvent); ok {
+			if propNotify.Window == win && propNotify.Atom == tempAtom {
+				// Clean up the temporary property
+				xproto.DeleteProperty(conn, win, tempAtom)
+				return propNotify.Time
+			}
+		}
+	}
+}
+
 func writeClipboard(text string, usePrimary bool) {
 	// Try to get an existing connection, or create a new one
 	conn, err := xgb.NewConn()
@@ -310,8 +329,12 @@ func writeClipboard(text string, usePrimary bool) {
 		selection = atoms.primary
 	}
 
-	// Take ownership of clipboard
-	xproto.SetSelectionOwner(conn, win, selection, xproto.TimeCurrentTime)
+	// Get a valid timestamp
+	timestamp := getTimestamp(conn, win)
+	log.Printf("timestamp: %d", timestamp)
+
+	// Take ownership of clipboard with the proper timestamp
+	xproto.SetSelectionOwner(conn, win, selection, timestamp)
 	owner, err := xproto.GetSelectionOwner(conn, selection).Reply()
 	if err != nil {
 		log.Fatalf("Failed to get selection owner: %v", err)
@@ -331,7 +354,6 @@ func writeClipboard(text string, usePrimary bool) {
 	// Event handling loop
 	textBytes := []byte(text)
 	done := false
-	timestamp := time.Now().Unix()
 	for !done {
 		ev, err := conn.WaitForEvent()
 		if err != nil {
