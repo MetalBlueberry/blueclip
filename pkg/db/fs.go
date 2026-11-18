@@ -37,8 +37,7 @@ func (db *FileDB) Load(s *selections.Set) error {
 	}
 	defer f.Close()
 
-	dec := gob.NewDecoder(f)
-	err = dec.Decode(s)
+	err = s.Decode(gob.NewDecoder(f))
 	if err != nil {
 		return fmt.Errorf("failed to decode file: %v", err)
 	}
@@ -55,8 +54,7 @@ func (db *FileDB) Save(s *selections.Set) error {
 	}
 	defer f.Close()
 
-	enc := gob.NewEncoder(f)
-	err = enc.Encode(s)
+	err = s.Encode(gob.NewEncoder(f))
 	if err != nil {
 		return err
 	}

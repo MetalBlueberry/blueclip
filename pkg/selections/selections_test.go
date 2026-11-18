@@ -3,6 +3,9 @@ package selections
 import (
 	"blueclip/pkg/xclip"
 	"bytes"
+	"encoding/gob"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -406,4 +409,25 @@ func TestSet_clear_all(t *testing.T) {
 	require.Equal(t, "Selection C\000", buf.String())
 
 	require.Equal(t, "Selection C", string(s.Last.Content))
+}
+
+func TestSet_concurrentAccess(t *testing.T) {
+	s := NewSelections()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := range 200 {
+			s.Add(Selection{
+				Selection: xclip.Selection{
+					Content: fmt.Appendf(nil, "Selection %d", i),
+					Target:  xclip.ValidTargetUTF8_STRING,
+				},
+			})
+		}
+	}()
+	for range 200 {
+		s.List(io.Discard)
+		require.NoError(t, s.Encode(gob.NewEncoder(io.Discard)))
+	}
+	<-done
 }

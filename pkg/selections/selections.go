@@ -4,6 +4,7 @@ import (
 	"blueclip/pkg/xclip"
 	"bytes"
 	"crypto/md5"
+	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"image/png"
@@ -192,7 +193,24 @@ func (s *Set) Add(selection Selection) {
 	log.Printf("Important length: %d", len(s.Important))
 }
 
+// Encode writes the set while holding the lock, so it is safe to call
+// while other goroutines modify the set.
+func (s *Set) Encode(enc *gob.Encoder) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return enc.Encode(s)
+}
+
+func (s *Set) Decode(dec *gob.Decoder) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return dec.Decode(s)
+}
+
 func (s *Set) List(out io.Writer) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	log.Printf("Listing %d important and %d ephemeral selections", len(s.Important), len(s.Ephemeral))
 
 	// Get max length to know how many iterations we need
