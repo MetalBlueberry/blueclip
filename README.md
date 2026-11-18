@@ -54,3 +54,25 @@ Ephemeral
 Reasoning is that you may want to see what is in your current selection, that is why last selection is first thing. Then you are equally likely to be looking for an old important selection or a new recent selection. So both are interlocked.
 
 In any case, you can always filter with fzf. but I hope this will make it quicker for the cases where I just scroll over it. (At least for myself)
+
+## AI agents (MCP)
+
+`blueclip mcp` serves the clipboard history to AI agents using the Model Context Protocol, so you can ask things like "is there anything relevant in my clipboard?", "put that in my clipboard" or "delete the entries about today's changes". It runs over stdio, is started by the agent, and talks to the running blueclip server through the same unix socket as the CLI.
+
+To make it available to Claude Code in every project:
+
+```sh
+claude mcp add --scope user blueclip -- blueclip mcp
+```
+
+The tools are:
+
+- `list_entries`: entries newest first, filtered by words, regex, time (`since`/`until` as a date, a time or a duration like `2h`), source (`clipboard` or `primary`) and kind, with content truncated
+- `get_entry`: one entry with its full content
+- `set_clipboard`: put new text in the clipboard
+- `copy_entry`: copy an existing entry back to the clipboard
+- `delete_entries`: delete entries permanently
+
+Every entry has an ID, the time it was last copied or selected, and the selection it came from. Entries saved by older versions get an ID when the history loads, but no time.
+
+The same operations are available as a JSON API under `/api/` on the socket, see `pkg/service/api.go`.

@@ -34,5 +34,6 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
+	rootCmd.AddCommand(mcpCmd)
 	client.Register(rootCmd)
 }
