@@ -125,6 +125,14 @@ func ClearWithType(t string) ClearOption {
 	}
 }
 
+func ClearWithAll(all bool) ClearOption {
+	return func(req *http.Request) {
+		q := req.URL.Query()
+		q.Set("all", strconv.FormatBool(all))
+		req.URL.RawQuery = q.Encode()
+	}
+}
+
 func (c *Client) Clear(ctx context.Context, in io.Reader, opts ...ClearOption) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://blueclip/clear", in)
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -29,11 +28,12 @@ var clearCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Failed to get all flag: %v", err)
 		}
-		if clearAll {
-			cmd.SetIn(strings.NewReader(""))
+		var in io.Reader
+		if !clearAll {
+			in = cmd.InOrStdin()
 		}
 
-		resp, err := client.Clear(ctx, cmd.InOrStdin(), service.ClearWithType(clearType))
+		resp, err := client.Clear(ctx, in, service.ClearWithType(clearType), service.ClearWithAll(clearAll))
 		if err != nil {
 			log.Fatalf("Failed to clear clipboard: %v", err)
 		}

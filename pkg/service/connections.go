@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
@@ -102,11 +103,15 @@ func (s *Service) HandleClear(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	patterns := bytes.Split(pattern, []byte("\000"))
+	patterns := slices.DeleteFunc(bytes.Split(pattern, []byte("\000")), func(p []byte) bool {
+		return len(p) == 0
+	})
+	if len(patterns) == 0 {
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("no pattern given, send selections to clear or use all=true"))
+		return
+	}
 	for _, pattern := range patterns {
-		if len(pattern) == 0 {
-			continue
-		}
 		switch typ := selections.SelectionRetentionType(typeString); typ {
 		case selections.SelectionRetentionTypeAll,
 			selections.SelectionRetentionTypeEphemeral,
