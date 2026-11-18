@@ -431,3 +431,28 @@ func TestSet_concurrentAccess(t *testing.T) {
 	}
 	<-done
 }
+
+func TestSet_Decode_dropsImages(t *testing.T) {
+	text := Selection{Selection: xclip.NewSelection([]byte("Selection A"), xclip.ValidTargetUTF8_STRING)}
+	image := Selection{Selection: xclip.NewSelection([]byte("\x89PNG..."), xclip.ValidTarget("image/png"))}
+	old := &Set{
+		Ephemeral: []Selection{text, image},
+		Important: []Selection{image},
+		Last:      &image,
+		Options:   NewSelections().Options,
+	}
+	buf := bytes.NewBuffer(nil)
+	require.NoError(t, old.Encode(gob.NewEncoder(buf)))
+
+	s := NewSelections()
+	require.NoError(t, s.Decode(gob.NewDecoder(buf)))
+
+	require.Len(t, s.Ephemeral, 1)
+	require.Equal(t, "Selection A", string(s.Ephemeral[0].Content))
+	require.Empty(t, s.Important)
+	require.Nil(t, s.Last)
+
+	out := bytes.NewBuffer(nil)
+	s.List(out)
+	require.Equal(t, "Selection A\000", out.String())
+}

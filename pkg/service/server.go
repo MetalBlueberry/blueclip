@@ -67,7 +67,6 @@ func (s *Service) Run(ctx context.Context) error {
 		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
 		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
 			xclip.ValidTargetxSpecialGnomeCopiedFiles,
-			xclip.ValidTargetImagePng,
 			xclip.ValidTargetUTF8_STRING,
 		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionClipboard),
@@ -83,7 +82,6 @@ func (s *Service) Run(ctx context.Context) error {
 		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
 		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
 			xclip.ValidTargetxSpecialGnomeCopiedFiles,
-			xclip.ValidTargetImagePng,
 			xclip.ValidTargetUTF8_STRING,
 		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionPrimary),

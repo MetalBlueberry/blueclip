@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"image/png"
 	"io"
 	"log"
 	"net"
@@ -15,10 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"time"
-
-	"github.com/qeesung/image2ascii/convert"
 )
 
 type Server struct {
@@ -198,43 +194,10 @@ func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if unindentFlag == "true" {
-		if selection.Target == xclip.ValidTargetImagePng {
-			convertOptions := convert.DefaultOptions
-
-			query := req.URL.Query()
-			width := query.Get("width")
-			height := query.Get("height")
-			if width != "" {
-				convertOptions.FixedWidth, err = strconv.Atoi(width)
-			}
-			if height != "" {
-				convertOptions.FixedHeight, err = strconv.Atoi(height)
-			}
-
-			log.Printf("Preview with %d columns and %d lines", convertOptions.FixedWidth, convertOptions.FixedHeight)
-
-			converter := convert.NewImageConverter()
-			imagefile, err := png.Decode(bytes.NewReader(selection.Content))
-			if err != nil {
-				resp.Write([]byte(fmt.Sprintf("failed to decode image: %v", err)))
-				return
-			}
-			ascii := converter.Image2ASCIIString(imagefile, &convertOptions)
-
-			_, err = resp.Write([]byte(ascii))
-			if err != nil {
-				log.Printf("Failed to write ascii: %v", err)
-			}
-		} else {
-			unindent(bytes.NewReader(selection.Content), resp)
-		}
-	} else {
-		_, err = resp.Write(selection.Content)
-		if err != nil {
-			log.Printf("Failed to write selection: %v", err)
-		}
+		unindent(bytes.NewReader(selection.Content), resp)
+		return
 	}
-	if err != nil {
+	if _, err := resp.Write(selection.Content); err != nil {
 		log.Printf("Failed to write selection: %v", err)
 	}
 }

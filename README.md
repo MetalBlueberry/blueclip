@@ -19,9 +19,8 @@ So far I have
 
 - [x] Integrates with fzf
 - [x] Monitos clipboard, primary and secondary
-- [x] supports copy targets UTF8_STRING x-special/gnome-copied-files and image/png
+- [x] supports copy targets UTF8_STRING and x-special/gnome-copied-files (text only, images are not stored)
 - [x] has a very nice cli tool to interact with it
-- [x] Previews png images as ASCII art because I can
 - [x] keeps my importan selections nearby
 
 ## Selection model

@@ -3,13 +3,11 @@ package selections
 import (
 	"blueclip/pkg/xclip"
 	"bytes"
-	"crypto/md5"
 	"encoding/gob"
-	"encoding/hex"
-	"fmt"
-	"image/png"
 	"io"
 	"log"
+	"slices"
+	"strings"
 	"sync"
 )
 
@@ -24,17 +22,13 @@ func (s *Selection) Line() []byte {
 
 // Clean returns a byte valid for line comparison
 func (s *Selection) Clean() []byte {
-	if s.Target == xclip.ValidTargetImagePng {
-		img, err := png.Decode(bytes.NewReader(s.Content))
-		if err != nil {
-			return []byte("Failed to decode image")
-		}
-
-		hash := md5.Sum(s.Content)
-		hashStr := hex.EncodeToString(hash[:])
-		return fmt.Appendf(nil, "PNG Image: %d x %d %s", img.Bounds().Max.X, img.Bounds().Max.Y, hashStr)
-	}
 	return s.Content
+}
+
+// isImage reports whether the selection holds image data. Image support was
+// dropped, but histories saved by older versions may still contain them.
+func (s *Selection) isImage() bool {
+	return strings.HasPrefix(string(s.Target), "image/")
 }
 
 func (s *Selection) String() string {
@@ -204,7 +198,17 @@ func (s *Set) Encode(enc *gob.Encoder) error {
 func (s *Set) Decode(dec *gob.Decoder) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return dec.Decode(s)
+	if err := dec.Decode(s); err != nil {
+		return err
+	}
+
+	isImage := func(sel Selection) bool { return sel.isImage() }
+	s.Ephemeral = slices.DeleteFunc(s.Ephemeral, isImage)
+	s.Important = slices.DeleteFunc(s.Important, isImage)
+	if s.Last != nil && s.Last.isImage() {
+		s.Last = nil
+	}
+	return nil
 }
 
 func (s *Set) List(out io.Writer) {
@@ -229,7 +233,7 @@ func (s *Set) List(out io.Writer) {
 		// Write Important second if available
 		importantIdx := len(s.Important) - 1 - i
 		if importantIdx >= 0 {
-			if s.Last != nil && !s.Important[importantIdx].Equal(*s.Last) {
+			if s.Last == nil || !s.Important[importantIdx].Equal(*s.Last) {
 				_, err := out.Write(s.Important[importantIdx].Line())
 				if err != nil {
 					log.Printf("Failed to write important selection: %v", err)
@@ -240,7 +244,7 @@ func (s *Set) List(out io.Writer) {
 		// Write Ephemeral first if available
 		ephemeralIdx := len(s.Ephemeral) - 1 - i
 		if ephemeralIdx >= 0 {
-			if s.Last != nil && !s.Ephemeral[ephemeralIdx].Equal(*s.Last) {
+			if s.Last == nil || !s.Ephemeral[ephemeralIdx].Equal(*s.Last) {
 				_, err := out.Write(s.Ephemeral[ephemeralIdx].Line())
 				if err != nil {
 					log.Printf("Failed to write ephemeral selection: %v", err)

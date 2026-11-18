@@ -234,7 +234,6 @@ const (
 	ValidTargetApplicationVndPortalFiletransfer ValidTarget = "application/vnd.portal.filetransfer"
 	ValidTargetApplicationVndPortalFiles        ValidTarget = "application/vnd.portal.files"
 	ValidTargetTextUriList                      ValidTarget = "text/uri-list"
-	ValidTargetImagePng                         ValidTarget = "image/png"
 	ValidTargetPasswordManagerHint              ValidTarget = "x-kde-passwordManagerHint"
 )
 

@@ -6,8 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -32,21 +30,10 @@ blueclip list | fzf --preview-window right:wrap --preview 'echo {} | blueclip pr
 			log.Fatalf("Failed to get unindent flag: %v", err)
 		}
 
-		width, err := cmd.Flags().GetInt("width")
-		if err != nil {
-			log.Fatalf("Failed to get width flag: %v", err)
-		}
-
-		height, err := cmd.Flags().GetInt("height")
-		if err != nil {
-			log.Fatalf("Failed to get height flag: %v", err)
-		}
-
 		resp, err := client.Print(
 			ctx,
 			cmd.InOrStdin(),
 			service.PrintWithUnindent(unindent),
-			service.PrintWithDimensions(width, height),
 		)
 		if err != nil {
 			log.Fatalf("Failed to print selection: %v", err)
@@ -66,21 +53,4 @@ blueclip list | fzf --preview-window right:wrap --preview 'echo {} | blueclip pr
 
 func init() {
 	printCmd.Flags().BoolP("unindent", "u", false, "Unindent the selection")
-
-	widthInt := 0
-	width, ok := os.LookupEnv("FZF_PREVIEW_COLUMNS")
-	if ok {
-		widthInt, _ = strconv.Atoi(width)
-		widthInt--
-	}
-
-	heightInt := 0
-	height, ok := os.LookupEnv("FZF_PREVIEW_LINES")
-	if ok {
-		heightInt, _ = strconv.Atoi(height)
-		heightInt--
-	}
-
-	printCmd.Flags().Int("width", widthInt, "Width of the selection")
-	printCmd.Flags().Int("height", heightInt, "Height of the selection")
 }
