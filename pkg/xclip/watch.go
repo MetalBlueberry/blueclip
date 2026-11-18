@@ -115,16 +115,18 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection
 				return
 			case <-time.After(opts.frequency):
 				func() {
-					ctx, cancel := context.WithTimeout(ctx, opts.frequency)
+					// the timeout bounds the xclip reads, handing over the change waits on
+					// the watch context so a busy receiver never drops it
+					readCtx, cancel := context.WithTimeout(ctx, opts.frequency)
 					defer cancel()
 
-					monitorTarget, allTargets := findValidTarget(ctx, opts.monitorTargets, opts, x)
+					monitorTarget, allTargets := findValidTarget(readCtx, opts.monitorTargets, opts, x)
 					if monitorTarget == ValidTargetUnknown {
 						return
 					}
 
 					current.Reset()
-					err := x.Paste(ctx, current, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
+					err := x.Paste(readCtx, current, append(commonPasteOpts, PasteOptionWithTarget(monitorTarget))...)
 					if err != nil {
 						log.Printf("Failed to read clipboard: %v", err)
 						return
@@ -137,7 +139,7 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection
 					previous.Reset()
 					current.WriteTo(previous)
 
-					if opts.skipSecrets && x.isSecret(ctx, allTargets, commonPasteOpts) {
+					if opts.skipSecrets && x.isSecret(readCtx, allTargets, commonPasteOpts) {
 						log.Printf("Skipping %s selection marked as secret by a password manager", opts.clip)
 						return
 					}
@@ -149,7 +151,7 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection
 					}
 					buf := bytes.NewBuffer([]byte{})
 					err = x.Paste(
-						ctx,
+						readCtx,
 						buf,
 						append(commonPasteOpts, PasteOptionWithTarget(withTarget))...,
 					)
