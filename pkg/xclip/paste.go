@@ -47,7 +47,9 @@ func (x *XClip) Paste(ctx context.Context, out io.Writer, opt ...PasteOption) er
 		silent: true,
 	}
 	for _, opt := range opt {
-		opt(opts)
+		if err := opt(opts); err != nil {
+			return fmt.Errorf("invalid paste option: %w", err)
+		}
 	}
 
 	args := []string{"-o"} // output mode

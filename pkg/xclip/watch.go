@@ -42,7 +42,7 @@ func WatchOptionWithMonitorTargets(targets []ValidTarget) WatchOption {
 
 func WatchOptionWithFrequency(frequency time.Duration) WatchOption {
 	return func(o *WatchOptions) error {
-		if o.frequency == 0 {
+		if frequency <= 0 {
 			return fmt.Errorf("frequency must be greater than 0")
 		}
 		o.frequency = frequency
@@ -66,13 +66,15 @@ func desiredTarget(targets []ValidTarget, priority []ValidTarget) ValidTarget {
 	return ValidTargetUnknown
 }
 
-func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection {
+func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection, error) {
 	opts := &WatchOptions{
 		Silent:    true,
 		frequency: time.Second,
 	}
 	for _, opt := range opt {
-		opt(opts)
+		if err := opt(opts); err != nil {
+			return nil, fmt.Errorf("invalid watch option: %w", err)
+		}
 	}
 
 	ch := make(chan Selection)
@@ -149,7 +151,7 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) <-chan Selection 
 			}
 		}
 	}()
-	return ch
+	return ch, nil
 }
 
 func findValidTarget(ctx context.Context, targets []ValidTarget, opts *WatchOptions, x *XClip) (ValidTarget, []ValidTarget) {

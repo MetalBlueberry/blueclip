@@ -24,6 +24,9 @@ func TestPaste(t *testing.T) {
 		if buf.String() != "test" {
 			t.Errorf("Paste() = %v, want %v", buf.String(), "test")
 		}
+		if u := execer.Unexpected(); len(u) > 0 {
+			t.Errorf("unexpected calls: %v", u)
+		}
 	})
 
 	t.Run("test paste with selection", func(t *testing.T) {
@@ -42,6 +45,9 @@ func TestPaste(t *testing.T) {
 
 		if buf.String() != "test" {
 			t.Errorf("Paste() = %v, want %v", buf.String(), "test")
+		}
+		if u := execer.Unexpected(); len(u) > 0 {
+			t.Errorf("unexpected calls: %v", u)
 		}
 	})
 }

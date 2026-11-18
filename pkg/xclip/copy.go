@@ -61,7 +61,9 @@ func (x *XClip) Copy(ctx context.Context, data io.Reader, opt ...CopyOption) err
 		silent: true,
 	}
 	for _, opt := range opt {
-		opt(opts)
+		if err := opt(opts); err != nil {
+			return fmt.Errorf("invalid copy option: %w", err)
+		}
 	}
 
 	args := []string{"-i"}

@@ -318,7 +318,7 @@ func TestSet_clear_ephemeral(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection A\000", SelectionRetentionTypeEphemeral)
+	s.Clear([]byte("Selection A"), SelectionRetentionTypeEphemeral)
 
 	buf := bytes.NewBuffer(nil)
 	s.List(buf)
@@ -350,7 +350,7 @@ func TestSet_clear_important(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection B\000", SelectionRetentionTypeImportant)
+	s.Clear([]byte("Selection B"), SelectionRetentionTypeImportant)
 
 	require.Len(t, s.Important, 0)
 	require.Len(t, s.Ephemeral, 1)
@@ -378,7 +378,7 @@ func TestSet_clear_all(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "Selection B", string(sel.Content))
 
-	s.Clear("Selection B\000", SelectionRetentionTypeAll)
+	s.Clear([]byte("Selection B"), SelectionRetentionTypeAll)
 
 	require.Len(t, s.Important, 0)
 	require.Len(t, s.Ephemeral, 1)
@@ -386,7 +386,7 @@ func TestSet_clear_all(t *testing.T) {
 	// Last selection is preserved
 	require.Equal(t, "Selection B", string(s.Last.Content))
 
-	s.Clear("Selection A\000", SelectionRetentionTypeAll)
+	s.Clear([]byte("Selection A"), SelectionRetentionTypeAll)
 
 	require.Len(t, s.Important, 0)
 	require.Len(t, s.Ephemeral, 0)

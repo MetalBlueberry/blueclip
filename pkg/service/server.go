@@ -60,7 +60,7 @@ func (s *Service) Run(ctx context.Context) error {
 		log.Printf("Loaded %d ephemeral and %d important selections", len(s.selections.Ephemeral), len(s.selections.Important))
 	}
 
-	clipboard := xclip.Cli.Watch(
+	clipboard, err := xclip.Cli.Watch(
 		ctx,
 		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
 		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
@@ -71,8 +71,11 @@ func (s *Service) Run(ctx context.Context) error {
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionClipboard),
 		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to watch clipboard: %w", err)
+	}
 
-	primary := xclip.Cli.Watch(
+	primary, err := xclip.Cli.Watch(
 		ctx,
 		xclip.WatchOptionWithMonitorTargets([]xclip.ValidTarget{xclip.ValidTargetTIMESTAMP}),
 		xclip.WatchOptionWithTargetPriority([]xclip.ValidTarget{
@@ -83,6 +86,9 @@ func (s *Service) Run(ctx context.Context) error {
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionPrimary),
 		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to watch primary selection: %w", err)
+	}
 
 	err = s.runListener(ctx)
 	if err != nil {
