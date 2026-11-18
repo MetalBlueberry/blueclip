@@ -39,6 +39,7 @@ func TestWatch(t *testing.T) {
 		case changes := <-ch:
 			require.Equal(t, "new content", string(changes.Content))
 			require.Equal(t, ValidTargetUTF8_STRING, changes.Target)
+			require.Equal(t, ClipboardSelectionClipboard, changes.Source)
 		case <-time.After(time.Second):
 			t.Fatal("timed out waiting for clipboard change")
 		}

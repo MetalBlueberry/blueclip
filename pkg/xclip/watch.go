@@ -158,10 +158,12 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection
 						return
 					}
 
+					sel := NewSelection(buf.Bytes(), withTarget)
+					sel.Source = opts.clip
 					select {
 					case <-ctx.Done():
 						return
-					case ch <- NewSelection(buf.Bytes(), withTarget):
+					case ch <- sel:
 					}
 				}()
 			}

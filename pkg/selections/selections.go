@@ -9,10 +9,16 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Selection struct {
 	xclip.Selection
+	// ID identifies the entry across restarts. Identical content keeps its ID.
+	ID uint64
+	// Time is when the entry was last selected or copied. It is zero for
+	// entries saved before times were recorded.
+	Time time.Time
 }
 
 // Line appends a null terminator to the selection
@@ -44,10 +50,13 @@ type Set struct {
 	Ephemeral []Selection
 	Important []Selection
 	Last      *Selection
+	// NextID is the last ID handed out.
+	NextID uint64
 
 	Options Options
 
 	lock sync.Mutex
+	now  func() time.Time
 }
 
 type SelectionRetentionType string
@@ -123,7 +132,8 @@ func NewSelections() *Set {
 	}
 }
 
-func (s *Set) Add(selection Selection) {
+// Add records a new selection and returns it as stored, with its ID and time.
+func (s *Set) Add(selection Selection) Selection {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -132,9 +142,16 @@ func (s *Set) Add(selection Selection) {
 	if s.Last != nil {
 		if selection.Equal(*s.Last) {
 			log.Printf("Selected content is already in the last selection")
-			return
+			return *s.Last
 		}
 	}
+
+	selection.Time = s.clock()
+	selection.ID = s.idOf(selection)
+	if selection.ID == 0 {
+		selection.ID = s.newID()
+	}
+
 	log.Printf("Setting last selection")
 	s.Last = &selection
 
@@ -174,6 +191,14 @@ func (s *Set) Add(selection Selection) {
 		}
 	}
 
+	s.truncate()
+
+	log.Printf("Ephemeral length: %d", len(s.Ephemeral))
+	log.Printf("Important length: %d", len(s.Important))
+	return selection
+}
+
+func (s *Set) truncate() {
 	if len(s.Ephemeral) > s.Options.MaxEphemeralElements {
 		log.Printf("Truncating ephemeral list to %d elements", s.Options.MaxEphemeralElements)
 		s.Ephemeral = s.Ephemeral[len(s.Ephemeral)-s.Options.MaxEphemeralElements:]
@@ -182,9 +207,58 @@ func (s *Set) Add(selection Selection) {
 		log.Printf("Truncating important list to %d elements", s.Options.MaxImportantElements)
 		s.Important = s.Important[len(s.Important)-s.Options.MaxImportantElements:]
 	}
+}
 
-	log.Printf("Ephemeral length: %d", len(s.Ephemeral))
-	log.Printf("Important length: %d", len(s.Important))
+func (s *Set) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
+func (s *Set) newID() uint64 {
+	s.NextID++
+	return s.NextID
+}
+
+// idOf returns the ID of an existing entry with the same content, or 0.
+func (s *Set) idOf(selection Selection) uint64 {
+	for _, list := range [][]Selection{s.Important, s.Ephemeral} {
+		for _, sel := range list {
+			if sel.ID != 0 && sel.Equal(selection) {
+				return sel.ID
+			}
+		}
+	}
+	return 0
+}
+
+// assignMissingIDs gives IDs to entries saved before IDs existed. Older
+// entries get lower IDs, and the last selection reuses the ID of the entry
+// with the same content.
+func (s *Set) assignMissingIDs() {
+	for _, list := range [][]Selection{s.Ephemeral, s.Important} {
+		for _, sel := range list {
+			s.NextID = max(s.NextID, sel.ID)
+		}
+	}
+	if s.Last != nil {
+		s.NextID = max(s.NextID, s.Last.ID)
+	}
+
+	for _, list := range [][]Selection{s.Ephemeral, s.Important} {
+		for i := range list {
+			if list[i].ID == 0 {
+				list[i].ID = s.newID()
+			}
+		}
+	}
+	if s.Last != nil && s.Last.ID == 0 {
+		s.Last.ID = s.idOf(*s.Last)
+		if s.Last.ID == 0 {
+			s.Last.ID = s.newID()
+		}
+	}
 }
 
 // Encode writes the set while holding the lock, so it is safe to call
@@ -208,6 +282,7 @@ func (s *Set) Decode(dec *gob.Decoder) error {
 	if s.Last != nil && s.Last.isImage() {
 		s.Last = nil
 	}
+	s.assignMissingIDs()
 	return nil
 }
 
@@ -254,6 +329,8 @@ func (s *Set) List(out io.Writer) {
 	}
 }
 
+// Copy promotes the entry matching a line from List to the important list
+// and makes it the last selection.
 func (s *Set) Copy(line []byte) (Selection, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -269,36 +346,51 @@ func (s *Set) Copy(line []byte) (Selection, bool) {
 		cleanLine = line[:len(line)-1]
 	}
 
-	for i, selection := range s.Important {
-		if bytes.Equal(cleanLine, selection.Clean()) {
-			s.Last = &selection
-			s.Important = append(s.Important[:i], s.Important[i+1:]...)
-			s.Important = append(s.Important, selection)
-			return selection, true
+	return s.promote(func(sel Selection) bool {
+		return bytes.Equal(cleanLine, sel.Clean())
+	})
+}
+
+// CopyByID is Copy for an entry ID.
+func (s *Set) CopyByID(id uint64) (Selection, bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.promote(func(sel Selection) bool {
+		return sel.ID == id
+	})
+}
+
+func (s *Set) promote(match func(Selection) bool) (Selection, bool) {
+	for i, sel := range s.Important {
+		if match(sel) {
+			sel.Time = s.clock()
+			s.Important = append(slices.Delete(s.Important, i, i+1), sel)
+			s.Last = &sel
+			return sel, true
 		}
 	}
 
-	sel := Selection{}
-	found := false
+	var found *Selection
 	filtered := []Selection{}
-	for _, selection := range s.Ephemeral {
-		if bytes.Equal(cleanLine, selection.Clean()) {
+	for _, sel := range s.Ephemeral {
+		if match(sel) {
 			log.Printf("Moving selection to important list")
-			sel = selection
-			found = true
-			s.Important = append(s.Important, selection)
+			sel.Time = s.clock()
+			s.Important = append(s.Important, sel)
+			found = &sel
 		} else {
-			filtered = append(filtered, selection)
+			filtered = append(filtered, sel)
 		}
 	}
 	s.Ephemeral = filtered
 
-	if found {
-		s.Last = &sel
-		return sel, true
+	if found == nil {
+		return Selection{}, false
 	}
-
-	return Selection{}, false
+	s.Last = found
+	s.truncate()
+	return *found, true
 }
 
 func (s *Set) FindMatch(line []byte) (Selection, bool) {
