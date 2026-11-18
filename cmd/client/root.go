@@ -1,8 +1,7 @@
 package client
 
 import (
-	"os"
-	"path/filepath"
+	"blueclip/pkg/service"
 
 	"github.com/spf13/cobra"
 )
@@ -26,6 +25,5 @@ func Register(base *cobra.Command) {
 }
 
 func init() {
-	socket := filepath.Join(os.TempDir(), "blueclip", "blueclip.sock")
-	rootCmd.PersistentFlags().StringVarP(&socketPath, "socket", "s", socket, "path to the unix socket")
+	rootCmd.PersistentFlags().StringVarP(&socketPath, "socket", "s", service.DefaultSocketPath(), "path to the unix socket")
 }

@@ -44,7 +44,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.Server.Shutdown(ctx)
 }
 
-func NewServer(mux *http.ServeMux) (*Server, error) {
+func NewServer(mux *http.ServeMux, sockPath string) (*Server, error) {
 	httpserver := &http.Server{
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
@@ -52,12 +52,9 @@ func NewServer(mux *http.ServeMux) (*Server, error) {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	sockDir := filepath.Join(os.TempDir(), "blueclip")
-	if err := os.MkdirAll(sockDir, 0700); err != nil {
-		return nil, fmt.Errorf("failed to create socket directory: %v", err)
+	if err := ensurePrivateDir(filepath.Dir(sockPath)); err != nil {
+		return nil, err
 	}
-
-	sockPath := filepath.Join(sockDir, "blueclip.sock")
 
 	if err := os.Remove(sockPath); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to remove existing socket: %v", err)

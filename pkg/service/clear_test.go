@@ -15,7 +15,7 @@ import (
 
 func newTestService(t *testing.T, contents ...string) *Service {
 	t.Helper()
-	s := NewService(&db.FileDB{Path: filepath.Join(t.TempDir(), "history.bin")})
+	s := NewService(&db.FileDB{Path: filepath.Join(t.TempDir(), "history.bin")}, "")
 	for _, c := range contents {
 		s.selections.Add(selections.Selection{
 			Selection: xclip.NewSelection([]byte(c), xclip.ValidTargetUTF8_STRING),

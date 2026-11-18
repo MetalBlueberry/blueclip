@@ -13,15 +13,17 @@ import (
 )
 
 type Service struct {
-	db *db.FileDB
+	db         *db.FileDB
+	socketPath string
 
 	lock       sync.Mutex
 	selections *selections.Set
 }
 
-func NewService(db *db.FileDB) *Service {
+func NewService(db *db.FileDB, socketPath string) *Service {
 	return &Service{
 		db:         db,
+		socketPath: socketPath,
 		selections: selections.NewSelections(),
 	}
 }
@@ -34,7 +36,7 @@ func (s *Service) runListener(ctx context.Context) error {
 	mux.HandleFunc("/list", s.HandleList)
 	mux.HandleFunc("/clear", s.HandleClear)
 
-	server, err := NewServer(mux)
+	server, err := NewServer(mux, s.socketPath)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
 	}

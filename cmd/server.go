@@ -46,7 +46,12 @@ var serverCmd = &cobra.Command{
 			log.Fatalf("Failed to create db: %v", err)
 		}
 
-		service := service.NewService(db)
+		socketPath, err := cmd.Flags().GetString("socket")
+		if err != nil {
+			log.Fatalf("Failed to get socket path: %v", err)
+		}
+
+		service := service.NewService(db, socketPath)
 		err = service.Run(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -61,4 +66,5 @@ var serverCmd = &cobra.Command{
 func init() {
 	serverCmd.Flags().StringP("history", "p", "~/.cache/blueclip/history.bin", "path to the history file")
 	serverCmd.Flags().StringP("config", "c", "~/.config/blueclip.yaml", "path to the config file")
+	serverCmd.Flags().StringP("socket", "s", service.DefaultSocketPath(), "path to the unix socket")
 }
