@@ -28,15 +28,25 @@ func NewService(db *db.FileDB, socketPath string) *Service {
 	}
 }
 
-func (s *Service) runListener(ctx context.Context) error {
-	log.Println("Starting service...")
+// Handler serves both the fzf oriented endpoints and the JSON API.
+func (s *Service) Handler() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/copy", s.HandleCopy)
 	mux.HandleFunc("/print", s.HandlePrint)
 	mux.HandleFunc("/list", s.HandleList)
 	mux.HandleFunc("/clear", s.HandleClear)
 
-	server, err := NewServer(mux, s.socketPath)
+	mux.HandleFunc("GET /api/entries", s.HandleListEntries)
+	mux.HandleFunc("GET /api/entries/{id}", s.HandleGetEntry)
+	mux.HandleFunc("POST /api/entries/delete", s.HandleDeleteEntries)
+	mux.HandleFunc("POST /api/entries/{id}/copy", s.HandleCopyEntry)
+	mux.HandleFunc("POST /api/clipboard", s.HandleSetClipboard)
+	return mux
+}
+
+func (s *Service) runListener(ctx context.Context) error {
+	log.Println("Starting service...")
+	server, err := NewServer(s.Handler(), s.socketPath)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
 	}

@@ -154,27 +154,35 @@ func (s *Service) HandleCopy(resp http.ResponseWriter, req *http.Request) {
 	clipboardSelections := req.URL.Query()["clipboard-selection"]
 	log.Printf("Clipboard selections: %v", clipboardSelections)
 
-	if len(clipboardSelections) == 0 {
-		clipboardSelections = []string{string(xclip.ClipboardSelectionClipboard)}
-	}
-
-	for _, clipboardSelection := range clipboardSelections {
-		log.Printf("Copying selection to clipboard: %s with target: %s", clipboardSelection, selection.Target)
-		err = xclip.Cli.Copy(
-			req.Context(),
-			bytes.NewReader(selection.Content),
-			xclip.CopyOptionSelection(xclip.ClipboardSelection(clipboardSelection)),
-			xclip.CopyOptionWithTarget(selection.Target),
-		)
-		if err != nil {
-			log.Printf("Failed to copy selection: %v", err)
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte(fmt.Sprintf("failed to copy selection: %v", err)))
-			return
-		}
+	if err := copyToClipboard(req.Context(), selection.Content, selection.Target, clipboardSelections); err != nil {
+		log.Printf("Failed to copy selection: %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(resp, "failed to copy selection: %v", err)
+		return
 	}
 
 	resp.WriteHeader(http.StatusOK)
+}
+
+// copyToClipboard writes content to each X11 selection, the clipboard when
+// none is given.
+func copyToClipboard(ctx context.Context, content []byte, target xclip.ValidTarget, selections []string) error {
+	if len(selections) == 0 {
+		selections = []string{string(xclip.ClipboardSelectionClipboard)}
+	}
+	for _, clipboardSelection := range selections {
+		log.Printf("Copying selection to clipboard: %s with target: %s", clipboardSelection, target)
+		err := xclip.Cli.Copy(
+			ctx,
+			bytes.NewReader(content),
+			xclip.CopyOptionSelection(xclip.ClipboardSelection(clipboardSelection)),
+			xclip.CopyOptionWithTarget(target),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) HandlePrint(resp http.ResponseWriter, req *http.Request) {
