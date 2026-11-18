@@ -45,18 +45,36 @@ func (db *FileDB) Load(s *selections.Set) error {
 	return nil
 }
 
+// Save writes to a temporary file and renames it over the history, so a crash
+// mid-write never leaves a truncated history that would fail to load.
 func (db *FileDB) Save(s *selections.Set) error {
-	os.MkdirAll(filepath.Dir(db.Path), 0755)
-
-	f, err := os.Create(db.Path)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
+	dir := filepath.Dir(db.Path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("failed to create directory: %v", err)
 	}
-	defer f.Close()
 
-	err = s.Encode(gob.NewEncoder(f))
+	// CreateTemp creates the file with 0600, the history may contain secrets.
+	f, err := os.CreateTemp(dir, filepath.Base(db.Path)+".tmp-*")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temporary file: %v", err)
+	}
+	tmpPath := f.Name()
+	defer os.Remove(tmpPath)
+
+	if err := s.Encode(gob.NewEncoder(f)); err != nil {
+		f.Close()
+		return fmt.Errorf("failed to encode selections: %v", err)
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return fmt.Errorf("failed to sync file: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close file: %v", err)
+	}
+
+	if err := os.Rename(tmpPath, db.Path); err != nil {
+		return fmt.Errorf("failed to replace history file: %v", err)
 	}
 	return nil
 }

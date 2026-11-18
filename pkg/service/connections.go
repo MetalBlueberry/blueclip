@@ -78,23 +78,25 @@ func (s *Service) HandleClear(resp http.ResponseWriter, req *http.Request) {
 		typeString = "all"
 	}
 
-	all := query.Get("all")
-	if all == "true" {
-		log.Printf("Clearing all selections of type: %s", typeString)
-		switch typ := selections.SelectionRetentionType(typeString); typ {
-		case selections.SelectionRetentionTypeAll,
-			selections.SelectionRetentionTypeEphemeral,
-			selections.SelectionRetentionTypeImportant:
-			s.selections.ClearAll(typ)
-		default:
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
-			return
-		}
+	typ := selections.SelectionRetentionType(typeString)
+	switch typ {
+	case selections.SelectionRetentionTypeAll,
+		selections.SelectionRetentionTypeEphemeral,
+		selections.SelectionRetentionTypeImportant:
+	default:
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
 		return
 	}
 
-	log.Printf("Clearing selections of type: %s", typeString)
+	if query.Get("all") == "true" {
+		log.Printf("Clearing all selections of type: %s", typ)
+		s.selections.ClearAll(typ)
+		s.persistOrFail(resp)
+		return
+	}
+
+	log.Printf("Clearing selections of type: %s", typ)
 	pattern, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("Failed to read pattern: %v", err)
@@ -112,25 +114,30 @@ func (s *Service) HandleClear(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	for _, pattern := range patterns {
-		switch typ := selections.SelectionRetentionType(typeString); typ {
-		case selections.SelectionRetentionTypeAll,
-			selections.SelectionRetentionTypeEphemeral,
-			selections.SelectionRetentionTypeImportant:
-			found := s.selections.Clear(pattern, typ)
-			if !found {
-				log.Printf("No match found for pattern: %s", string(pattern))
-				resp.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(resp, "no match found for pattern \"%s\"", string(pattern))
+		if !s.selections.Clear(pattern, typ) {
+			log.Printf("No match found for pattern: %s", string(pattern))
+			// patterns before this one were already cleared
+			if !s.persistOrFail(resp) {
 				return
 			}
-		default:
-			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte("invalid type, allowed types are: all, ephemeral, important"))
+			resp.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(resp, "no match found for pattern \"%s\"", string(pattern))
 			return
 		}
 	}
 
-	resp.WriteHeader(http.StatusOK)
+	s.persistOrFail(resp)
+}
+
+// persistOrFail saves the selections and writes a 500 if it fails.
+func (s *Service) persistOrFail(resp http.ResponseWriter) bool {
+	if err := s.persist(); err != nil {
+		log.Printf("Failed to save selections: %v", err)
+		resp.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(resp, "failed to save selections: %v", err)
+		return false
+	}
+	return true
 }
 
 func (s *Service) HandleList(resp http.ResponseWriter, req *http.Request) {

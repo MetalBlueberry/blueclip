@@ -110,15 +110,18 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 }
 func (s *Service) handleClipboardChange(ctx context.Context, data xclip.Selection) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	s.selections.Add(selections.Selection{
 		Selection: data,
 	})
 
-	err := s.db.Save(s.selections)
-	if err != nil {
+	if err := s.persist(); err != nil {
 		log.Printf("Failed to save selections: %s", err)
 	}
+}
+
+// persist serializes writes to the history file, the set has its own lock.
+func (s *Service) persist() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.db.Save(s.selections)
 }
