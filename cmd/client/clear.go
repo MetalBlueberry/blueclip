@@ -2,6 +2,7 @@ package client
 
 import (
 	"blueclip/pkg/service"
+	"bytes"
 	"context"
 	"io"
 	"log"
@@ -30,7 +31,15 @@ var clearCmd = &cobra.Command{
 		}
 		var in io.Reader
 		if !clearAll {
-			in = cmd.InOrStdin()
+			patterns, err := io.ReadAll(cmd.InOrStdin())
+			if err != nil {
+				log.Fatalf("Failed to read selections to clear: %v", err)
+			}
+			// fzf prints nothing when cancelled, that is not an error
+			if len(bytes.Trim(patterns, "\x00\n")) == 0 {
+				return
+			}
+			in = bytes.NewReader(patterns)
 		}
 
 		resp, err := client.Clear(ctx, in, service.ClearWithType(clearType), service.ClearWithAll(clearAll))
