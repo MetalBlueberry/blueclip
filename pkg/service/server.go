@@ -72,6 +72,7 @@ func (s *Service) Run(ctx context.Context) error {
 		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionClipboard),
 		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
+		xclip.WatchOptionWithSkipSecrets(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to watch clipboard: %w", err)
@@ -87,6 +88,7 @@ func (s *Service) Run(ctx context.Context) error {
 		}),
 		xclip.WatchOptionWithClipboardSelection(xclip.ClipboardSelectionPrimary),
 		xclip.WatchOptionWithFrequency(1000*time.Millisecond),
+		xclip.WatchOptionWithSkipSecrets(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to watch primary selection: %w", err)

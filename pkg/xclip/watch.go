@@ -22,6 +22,17 @@ type WatchOptions struct {
 
 	clip      ClipboardSelection
 	frequency time.Duration
+
+	skipSecrets bool
+}
+
+// WatchOptionWithSkipSecrets ignores selections that a password manager marks
+// with the x-kde-passwordManagerHint target set to "secret".
+func WatchOptionWithSkipSecrets() WatchOption {
+	return func(o *WatchOptions) error {
+		o.skipSecrets = true
+		return nil
+	}
 }
 
 type WatchOption func(*WatchOptions) error
@@ -126,6 +137,11 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection
 					previous.Reset()
 					current.WriteTo(previous)
 
+					if opts.skipSecrets && x.isSecret(ctx, allTargets, commonPasteOpts) {
+						log.Printf("Skipping %s selection marked as secret by a password manager", opts.clip)
+						return
+					}
+
 					withTarget := desiredTarget(allTargets, opts.targetPriority)
 					if withTarget == ValidTargetUnknown {
 						log.Printf("No valid target found to read, available targets: %v, valid targets: %v", allTargets, opts.targetPriority)
@@ -152,6 +168,21 @@ func (x *XClip) Watch(ctx context.Context, opt ...WatchOption) (<-chan Selection
 		}
 	}()
 	return ch, nil
+}
+
+// isSecret fails closed: if the hint is present but can't be read, the
+// selection is treated as secret.
+func (x *XClip) isSecret(ctx context.Context, targets []ValidTarget, pasteOpts []PasteOption) bool {
+	if !slices.Contains(targets, ValidTargetPasswordManagerHint) {
+		return false
+	}
+	hint := bytes.NewBuffer(nil)
+	err := x.Paste(ctx, hint, append(pasteOpts, PasteOptionWithTarget(ValidTargetPasswordManagerHint))...)
+	if err != nil {
+		log.Printf("Failed to read password manager hint: %v", err)
+		return true
+	}
+	return string(bytes.TrimSpace(hint.Bytes())) == "secret"
 }
 
 func findValidTarget(ctx context.Context, targets []ValidTarget, opts *WatchOptions, x *XClip) (ValidTarget, []ValidTarget) {
@@ -204,6 +235,7 @@ const (
 	ValidTargetApplicationVndPortalFiles        ValidTarget = "application/vnd.portal.files"
 	ValidTargetTextUriList                      ValidTarget = "text/uri-list"
 	ValidTargetImagePng                         ValidTarget = "image/png"
+	ValidTargetPasswordManagerHint              ValidTarget = "x-kde-passwordManagerHint"
 )
 
 func TargetsOptionWithSelection(selection ClipboardSelection) TargetsOption {
