@@ -106,10 +106,11 @@ func TestSet_Decode_assignsIDsToOldEntries(t *testing.T) {
 	s := NewSelections()
 	require.NoError(t, s.Decode(gob.NewDecoder(buf)))
 
-	require.Equal(t, uint64(1), s.Ephemeral[0].ID)
-	require.Equal(t, uint64(2), s.Ephemeral[1].ID)
-	require.Equal(t, uint64(3), s.Important[0].ID)
-	require.Equal(t, uint64(3), s.Last.ID, "last keeps the ID of the entry with the same content")
+	require.Equal(t, uint64(1), s.Important[0].ID, "important entries are numbered first")
+	require.Equal(t, uint64(2), s.Ephemeral[0].ID)
+	require.Equal(t, uint64(3), s.Ephemeral[1].ID)
+	require.Equal(t, uint64(1), s.Last.ID, "last keeps the ID of the entry with the same content")
+	require.Equal(t, []uint64{3, 2, 1}, ids(s.Entries(Filter{})), "recent ephemeral entries list first")
 	require.True(t, s.Ephemeral[0].Time.IsZero(), "old entries have no known time")
 
 	s.now = fakeClock()

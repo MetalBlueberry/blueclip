@@ -233,9 +233,11 @@ func (s *Set) idOf(selection Selection) uint64 {
 	return 0
 }
 
-// assignMissingIDs gives IDs to entries saved before IDs existed. Older
-// entries get lower IDs, and the last selection reuses the ID of the entry
-// with the same content.
+// assignMissingIDs gives IDs to entries saved before IDs existed. Without
+// times, IDs are the only order: important entries are numbered first because
+// recent copies live in the ephemeral list, and within a list older entries
+// get lower IDs. The last selection reuses the ID of the entry with the same
+// content.
 func (s *Set) assignMissingIDs() {
 	for _, list := range [][]Selection{s.Ephemeral, s.Important} {
 		for _, sel := range list {
@@ -246,7 +248,7 @@ func (s *Set) assignMissingIDs() {
 		s.NextID = max(s.NextID, s.Last.ID)
 	}
 
-	for _, list := range [][]Selection{s.Ephemeral, s.Important} {
+	for _, list := range [][]Selection{s.Important, s.Ephemeral} {
 		for i := range list {
 			if list[i].ID == 0 {
 				list[i].ID = s.newID()
