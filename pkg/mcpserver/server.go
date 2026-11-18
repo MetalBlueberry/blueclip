@@ -11,6 +11,8 @@ import (
 
 const instructions = `blueclip is the user's clipboard history on X11 (Linux).
 
+Use these tools whenever the user asks what is in their clipboard, about something they copied, or to copy something for them. Prefer them over xclip, xsel or wl-copy: copies made with those tools are not recorded in the history.
+
 Entries come from explicit copies (source "clipboard") and from text the user highlighted (source "primary"). An entry's time is when it was last copied or selected; entries without a time were saved before times were recorded and are the oldest. Entries the user picked again from the history are kind "important" and are kept longer than "ephemeral" ones.
 
 list_entries returns entries newest first with their content truncated; use get_entry for the full content. Prefer filtering with query, regex, since and source over paging through everything.
